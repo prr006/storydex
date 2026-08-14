@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StoryDex - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=JetBrains+Mono:wght@500;600&amp;family=Inter:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-primary-container": "#ede0ff",
+                "inverse-on-surface": "#2e3038",
+                "surface-variant": "#33343c",
+                "surface-bright": "#373941",
+                "muted": "#1a1a2c",
+                "tertiary-fixed-dim": "#c7c5d3",
+                "on-error-container": "#ffdad6",
+                "surface-container-high": "#282a31",
+                "on-primary-fixed-variant": "#5a00c6",
+                "tertiary": "#c7c5d3",
+                "surface-container-highest": "#33343c",
+                "surface-container-lowest": "#0c0e15",
+                "surface-tint": "#d2bbff",
+                "primary": "#d2bbff",
+                "outline": "#958da1",
+                "on-secondary-fixed-variant": "#2f3aa3",
+                "error": "#ffb4ab",
+                "status-watched": "#4ade80",
+                "brand-glow": "rgba(124, 58, 237, 0.25)",
+                "secondary": "#bdc2ff",
+                "tertiary-container": "#666572",
+                "on-surface-variant": "#ccc3d8",
+                "outline-variant": "#4a4455",
+                "on-primary": "#3f008e",
+                "surface-container-low": "#191b22",
+                "surface-container": "#1d1f26",
+                "on-surface": "#e2e2ec",
+                "status-planning": "#c084fc",
+                "primary-container": "#7c3aed",
+                "secondary-fixed-dim": "#bdc2ff",
+                "secondary-container": "#2f3aa3",
+                "on-tertiary-container": "#e6e3f3",
+                "primary-fixed": "#eaddff",
+                "inverse-primary": "#732ee4",
+                "on-tertiary": "#302f3b",
+                "background": "#0a0a14",
+                "on-tertiary-fixed": "#1b1b25",
+                "on-tertiary-fixed-variant": "#464652",
+                "error-container": "#93000a",
+                "surface": "#12121e",
+                "on-background": "#e2e2ec",
+                "status-watching": "#60a5fa",
+                "on-secondary": "#131e8c",
+                "on-primary-fixed": "#25005a",
+                "secondary-fixed": "#e0e0ff",
+                "on-secondary-container": "#a8afff",
+                "inverse-surface": "#e2e2ec",
+                "primary-fixed-dim": "#d2bbff",
+                "on-error": "#690005",
+                "on-secondary-fixed": "#000767",
+                "tertiary-fixed": "#e4e1f0",
+                "surface-dim": "#11131a"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "base-unit": "4px",
+                "container-max": "1280px",
+                "stack-section": "3.5rem",
+                "stack-component": "1.5rem",
+                "gutter-desktop": "2rem",
+                "gutter-mobile": "1rem"
+        },
+        "fontFamily": {
+                "data-tabular": [
+                        "JetBrains Mono"
+                ],
+                "body-sm": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "JetBrains Mono"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-hero-mobile": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "display-hero": [
+                        "Plus Jakarta Sans"
+                ],
+                "section-header": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "data-tabular": [
+                        "13px",
+                        {
+                                "lineHeight": "1",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "11px",
+                        {
+                                "lineHeight": "1",
+                                "letterSpacing": "0.1em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-hero-mobile": [
+                        "40px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.3",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-hero": [
+                        "72px",
+                        {
+                                "lineHeight": "1.1",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "section-header": [
+                        "20px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .stagger-5 { animation-delay: 0.5s; }
+        
+        .scrim-gradient {
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+        }
+        
+        .glass-panel {
+            background: rgba(18, 18, 30, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Hide scrollbar for horizontal scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-safe">
+<!-- TopAppBar from JSON -->
+<header class="bg-background/80 backdrop-blur-xl shadow-2xl shadow-brand-glow/20 fixed top-0 w-full z-50 transition-all duration-300">
+<div class="flex justify-between items-center px-gutter-mobile md:px-gutter-desktop h-16 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="font-display-hero-mobile text-headline-lg tracking-tighter text-primary-fixed-dim">StoryDex</span>
+</div>
+<!-- Desktop Nav -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-primary font-bold hover:scale-105 hover:text-primary transition-all duration-300" href="#">Library</a>
+<a class="text-on-surface-variant hover:scale-105 hover:text-primary transition-all duration-300" href="#">Discover</a>
+<a class="text-on-surface-variant hover:scale-105 hover:text-primary transition-all duration-300" href="#">Stats</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pt-24 md:pt-32 pb-24 px-gutter-mobile md:px-gutter-desktop max-w-container-max mx-auto w-full">
+<!-- Header & Stats Summary -->
+<div class="mb-12 fade-in stagger-1">
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 w-full">
+<div class="flex-shrink-0">
+<h1 class="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-on-background mb-4 uppercase tracking-tighter">YOUR STORIES</h1>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto flex-grow justify-end">
+<div class="bg-surface/50 border border-white/5 rounded-xl p-4 flex flex-col justify-center items-start md:items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase tracking-widest">Total Stories</span>
+<span class="font-headline-lg text-headline-lg text-on-surface">142</span>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-xl p-4 flex flex-col justify-center items-start md:items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase tracking-widest">Completion</span>
+<span class="font-headline-lg text-headline-lg text-primary-fixed-dim">85%</span>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-xl p-4 flex flex-col justify-center items-start md:items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase tracking-widest">Active</span>
+<span class="font-headline-lg text-headline-lg text-status-watching">12</span>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-xl p-4 flex flex-col justify-center items-start md:items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase tracking-widest">Upcoming</span>
+<span class="font-headline-lg text-headline-lg text-status-planning">5</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Controls Bar -->
+<div class="glass-panel sticky top-16 z-40 rounded-xl mb-12 p-4 shadow-lg fade-in stagger-2">
+<div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+<!-- Search -->
+<div class="relative w-full lg:w-96">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40">search</span>
+<input class="w-full bg-background border border-white/10 rounded-lg pl-12 pr-4 py-3 text-body-sm focus:ring-2 focus:ring-primary-container/50 focus:border-transparent transition-all outline-none placeholder:text-on-surface-variant/40 text-on-surface" placeholder="Search your collection..." type="text"/>
+</div>
+<!-- Filters & Sort -->
+<div class="flex w-full lg:w-auto items-center gap-3 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
+<button class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full bg-primary-container text-white font-data-tabular text-data-tabular shadow-[0_0_15px_rgba(124,58,237,0.25)] transition-all hover:scale-[1.03] active:translate-y-px">
+                        All
+                    </button>
+<button class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 text-on-surface-variant font-data-tabular text-data-tabular hover:bg-white/10 hover:text-on-surface transition-all active:translate-y-px">
+                        Watching
+                    </button>
+<button class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 text-on-surface-variant font-data-tabular text-data-tabular hover:bg-white/10 hover:text-on-surface transition-all active:translate-y-px">
+                        Completed
+                    </button>
+<button class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 text-on-surface-variant font-data-tabular text-data-tabular hover:bg-white/10 hover:text-on-surface transition-all active:translate-y-px">
+                        Planning
+                    </button>
+<div class="w-px h-6 bg-white/10 mx-2 shrink-0"></div>
+<button class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-white/10 text-on-surface-variant hover:bg-white/10 transition-all">
+<span class="material-symbols-outlined text-sm">sort</span>
+<span class="font-data-tabular text-data-tabular">Latest</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Continue Watching & Featured Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 fade-in stagger-3">
+<!-- Continue Watching Column -->
+<section class="lg:col-span-2">
+<h2 class="font-section-header text-section-header text-on-surface mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container">play_circle</span>
+                Continue Watching
+            </h2>
+<div class="flex overflow-x-auto gap-6 pb-6 no-scrollbar snap-x snap-mandatory">
+<!-- Active Card 1 -->
+<div class="snap-start shrink-0 w-[280px] md:w-[360px] group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-glow/20 cursor-pointer flex flex-col h-full">
+<div class="aspect-[16/9] relative overflow-hidden shrink-0">
+<div class="bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="A cinematic still frame from a moody sci-fi thriller anime set in a rainy neon city. The lighting is highly stylized with deep blues and vivid purple highlights. The camera angle is slightly tilted, creating a sense of urgency. High quality, detailed linework, atmospheric depth." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCA-8bMts6Jen5hOrWrcEkceADTy0ZJ05XMuADsQLaBb7qi6MceYo3h8WRud-0zEJBD2y45ftS1X2QnocnhJp9fbUQkg8dO861f6yB7O4rHEWjWwQnvdoqjUhms-IpHLVc_TH1LmmeosmkwgEwAL2B_AJv9sANNfcfAJ_DCJN2ol9HSP6RK1CHSFmEB4aH3ZtOHOaOdyXfVwQZMf63c5rpE0lHsLxnL0F5HB5Va_cRFe7PmTUAg7A_2')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"></div>
+<div class="absolute top-3 left-3 bg-surface/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded font-label-caps text-label-caps text-on-surface uppercase flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-status-watching animate-pulse"></span>
+                            4/5 Entries
+                        </div>
+</div>
+<div class="p-5 flex flex-col flex-grow bg-surface z-10 -mt-6 relative">
+<h3 class="font-headline-lg text-section-header text-on-surface truncate mb-1">Steins;Gate</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mb-4">Sci-Fi • Thriller • Drama</p>
+<div class="mt-auto">
+<div class="flex justify-between items-end mb-2">
+<span class="font-data-tabular text-data-tabular text-primary-fixed-dim">Next: Ep 12 / 24</span>
+<span class="font-data-tabular text-data-tabular text-on-surface-variant">50%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary-container to-primary-container w-[50%] rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Card 2 -->
+<div class="snap-start shrink-0 w-[280px] md:w-[360px] group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-glow/20 cursor-pointer flex flex-col h-full">
+<div class="aspect-[16/9] relative overflow-hidden shrink-0">
+<div class="bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="A sweeping, epic fantasy landscape featuring a colossal glowing tree against a starry night sky. Ethereal light particles float in the air. The aesthetic is breathtaking and grand, with a palette of deep navy, emerald greens, and soft glowing whites. Highly detailed, cinematic composition." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBBtLYS8QMqQ47kr2vVWFyBBQLBDPxY3df8FsAf0gqaLF_AhZI97_m3Bk3k4wFtb6pDYj9Lqk9Hv02PWuUqiIiNAAOnGZDnnZw4E8sZkpcy6MWmNLgzhy6DdfE7lo2zmEYlns7qyYjs5kyUtAOgc5HR2VRi1MVKJHouw2CUnRTZP49zFC8z8MhX6u0HA3BspbaFKldRQF9TlS16NfUJmJKO_x-Hcralv38WSSFzcQNAoG2-bbtvlrIn')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"></div>
+<div class="absolute top-3 left-3 bg-surface/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded font-label-caps text-label-caps text-on-surface uppercase flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-status-watching animate-pulse"></span>
+                            1/1 Entry
+                        </div>
+</div>
+<div class="p-5 flex flex-col flex-grow bg-surface z-10 -mt-6 relative">
+<h3 class="font-headline-lg text-section-header text-on-surface truncate mb-1">Frieren</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mb-4">Fantasy • Adventure • Slice of Life</p>
+<div class="mt-auto">
+<div class="flex justify-between items-end mb-2">
+<span class="font-data-tabular text-data-tabular text-primary-fixed-dim">Next: Vol 3 / 8</span>
+<span class="font-data-tabular text-data-tabular text-on-surface-variant">35%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary-container to-primary-container w-[35%] rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Featured Highlight Column -->
+<section class="lg:col-span-1">
+<h2 class="font-section-header text-section-header text-on-surface mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-status-watched">hotel_class</span>
+                Recently Completed
+            </h2>
+<div class="w-full h-[calc(100%-3rem)] rounded-2xl overflow-hidden bg-surface border border-white/10 relative group cursor-pointer aspect-square lg:aspect-auto">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="A dramatic, high-contrast poster art featuring a solitary figure standing in a dilapidated urban alleyway under stark, moody lighting. The color palette is restricted to deep blacks, greys, and striking accents of blood red. The composition is tense and psychological. Detailed, cinematic anime style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuASz9lrXgFEJat0BA09tjb-wgyp1JxdYKebMJVJ3v4Y_te8Ji4GtpsMqs7S_0vBUHKhCjyVf_zXQiTaPJkO6V26RbKyPT0NebgtAXdX8VoiFL246aShGmrPqWTLK0cHs-GMebJlm00AxPh0J-fO45MAsnff5NV_58msAmShBHSWrWgOcdZv8FQOMBZkC2gjOr6Rdt9qNL0PVj4WaI9n0Rl2Z9XdpkrIa_AqiK8xPN--JNZsPIHvDRxS')"></div>
+<div class="absolute inset-0 scrim-gradient"></div>
+<div class="absolute top-4 right-4 bg-status-watched/20 backdrop-blur-md border border-status-watched/40 px-3 py-1.5 rounded font-label-caps text-label-caps text-status-watched uppercase">
+                    100% Mastered
+                </div>
+<div class="absolute bottom-0 left-0 w-full p-6 z-10">
+<h3 class="font-headline-lg text-headline-lg text-on-surface leading-tight mb-2 drop-shadow-md">Chaos;Head</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 opacity-90 line-clamp-2">A gripping psychological thriller that bends reality and perception.</p>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-primary-fixed-dim bg-surface/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/5">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-data-tabular text-data-tabular font-bold">8.5</span>
+</div>
+<span class="font-data-tabular text-data-tabular text-on-surface-variant bg-surface/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/5">2008</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Main Library Grid -->
+<section class="fade-in stagger-4">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-section-header text-section-header text-on-surface">Full Collection</h2>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg bg-surface border border-white/10 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">grid_view</span></button>
+<button class="p-2 rounded-lg border border-transparent text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">view_list</span></button>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+<!-- Poster Card 1 -->
+<div class="group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-glow/20 cursor-pointer aspect-[2/3]">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="A dramatic, high-contrast poster art featuring a solitary figure standing in a dilapidated urban alleyway under stark, moody lighting. The color palette is restricted to deep blacks, greys, and striking accents of blood red. The composition is tense and psychological. Detailed, cinematic anime style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuASz9lrXgFEJat0BA09tjb-wgyp1JxdYKebMJVJ3v4Y_te8Ji4GtpsMqs7S_0vBUHKhCjyVf_zXQiTaPJkO6V26RbKyPT0NebgtAXdX8VoiFL246aShGmrPqWTLK0cHs-GMebJlm00AxPh0J-fO45MAsnff5NV_58msAmShBHSWrWgOcdZv8FQOMBZkC2gjOr6Rdt9qNL0PVj4WaI9n0Rl2Z9XdpkrIa_AqiK8xPN--JNZsPIHvDRxS')"></div>
+<div class="absolute inset-0 scrim-gradient opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
+<!-- Top Overlay Info -->
+<div class="absolute top-0 left-0 w-full p-3 flex justify-between items-start z-10 bg-gradient-to-b from-black/80 to-transparent">
+<div class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px] bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/5">
+                        2/2 • 100%
+                    </div>
+<div class="bg-status-watched/20 border border-status-watched/40 w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px] text-status-watched font-bold">check</span>
+</div>
+</div>
+<!-- Bottom Info -->
+<div class="absolute bottom-0 left-0 w-full p-4 z-10 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+<h3 class="font-section-header text-body-md text-on-surface leading-tight mb-2 drop-shadow-md">Chaos;Head</h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px]">2008</span>
+<div class="flex items-center gap-1 text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-data-tabular text-data-tabular text-[12px]">8.5</span>
+</div>
+</div>
+<div class="w-full h-1 bg-muted rounded-full overflow-hidden mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+<div class="h-full bg-status-watched w-[100%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Poster Card 2 -->
+<div class="group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-glow/20 cursor-pointer aspect-[2/3]">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="A surreal, melancholic portrait of an android girl sitting amongst overgrown ruins. The lighting is soft and diffused, creating a dreamlike, faded aesthetic. Colors are muted pastels, predominantly dusty rose and sage green. Beautifully rendered, emotive, highly detailed digital illustration." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCHFjQufeRXPGf_ZZrBYbQsNjhaMf0srSDeqZ1c9aC2dRrn6DOmPBz8qr3jr2AyKmzLgNjB2Ow_x3kl4NdghLjqQWV6MSBsp5RF9Hz-c8WZWtBVA_5BG8ycys-y35lGJdhoWI2rfYOf6aAGSUL_a9yXC9K9te8NGqe9LBqjDNSxLOl6R-NJ9AIRngEUT65Zf9c4R8mPdpfnUqewKqkE0lK_IdEhHXOshbfuEnws-oHi5m9oQEF7gT5C')"></div>
+<div class="absolute inset-0 scrim-gradient opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
+<!-- Top Overlay Info -->
+<div class="absolute top-0 left-0 w-full p-3 flex justify-between items-start z-10 bg-gradient-to-b from-black/80 to-transparent">
+<div class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px] bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/5">
+                        0/1 • 0%
+                    </div>
+<div class="bg-status-planning/20 border border-status-planning/40 px-1.5 py-0.5 rounded font-label-caps text-[9px] text-status-planning uppercase backdrop-blur-md">
+                        PLANNING
+                    </div>
+</div>
+<!-- Bottom Info -->
+<div class="absolute bottom-0 left-0 w-full p-4 z-10 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+<h3 class="font-section-header text-body-md text-on-surface leading-tight mb-2 drop-shadow-md">NieR:Automata</h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px]">Manga</span>
+</div>
+<div class="text-[10px] font-label-caps text-status-planning opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+                        VOL 1 UPCOMING
+                    </div>
+</div>
+</div>
+</div>
+<!-- Poster Card 3 -->
+<div class="group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-glow/20 cursor-pointer aspect-[2/3]">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105" data-alt="Dynamic action shot of a futuristic mecha soaring through a cloudscape. The lighting is intense, with bright sunlight reflecting off metallic surfaces and dynamic motion blur. Vibrant colors, high contrast between the bright sky and the sleek, dark metal. Masterpiece, cinematic lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB7UPR7QR6Trnsca6N5A84QKpDtaDkODyAZ1La577YwBbUsXTGUbuQaH7KoVQ68YndatUmRb7HtadQdPcO1i_ceZBVHouk3h4n5Yu9UtDPcAzxZH9WjdC-NwUYSus8iE3D_DAW_T1W4qPG3_U8I00jRoz-E0fr8TGe8ffrb8aKZOhvJbrCP-lps_xj8HAIO84WQXHjBedhrJsz8Rp03IQeUB7Bgidx4SnImIKfdUipecM_YZCzlLXAk')"></div>
+<div class="absolute inset-0 scrim-gradient opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
+<!-- Top Overlay Info -->
+<div class="absolute top-0 left-0 w-full p-3 flex justify-between items-start z-10 bg-gradient-to-b from-black/80 to-transparent">
+<div class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px] bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/5">
+                        2/3 • 66%
+                    </div>
+<div class="bg-status-watching/20 border border-status-watching/40 px-1.5 py-0.5 rounded font-label-caps text-[9px] text-status-watching uppercase backdrop-blur-md">
+                        WATCHING
+                    </div>
+</div>
+<!-- Bottom Info -->
+<div class="absolute bottom-0 left-0 w-full p-4 z-10 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+<h3 class="font-section-header text-body-md text-on-surface leading-tight mb-2 drop-shadow-md">Gundam WfM</h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-data-tabular text-data-tabular text-on-surface-variant text-[11px]">Anime</span>
+<div class="flex items-center gap-1 text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-data-tabular text-data-tabular text-[12px]">9.2</span>
+</div>
+</div>
+<div class="w-full h-1 bg-muted rounded-full overflow-hidden mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+<div class="h-full bg-status-watching w-[66%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar from JSON -->
+<nav class="md:hidden bg-surface-container/90 backdrop-blur-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.12)] fixed bottom-0 w-full rounded-t-xl left-0 z-50 flex justify-around items-center h-20 px-4 pb-safe">
+<a class="flex flex-col items-center justify-center text-primary font-bold scale-110 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">subscriptions</span>
+<span class="font-label-caps text-label-caps">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">explore</span>
+<span class="font-label-caps text-label-caps">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">leaderboard</span>
+<span class="font-label-caps text-label-caps">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</nav>
+</body></html>

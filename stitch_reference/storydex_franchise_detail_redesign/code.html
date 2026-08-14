@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StoryDex - Franchise Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&amp;family=JetBrains+Mono:wght@500;600&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#7c3aed",
+                        "surface-dim": "#11131a",
+                        "on-surface": "#e2e2ec",
+                        "tertiary-fixed": "#e4e1f0",
+                        "muted": "#1a1a2c",
+                        "on-secondary-container": "#a8afff",
+                        "on-error": "#690005",
+                        "on-secondary": "#131e8c",
+                        "surface-container": "#1d1f26",
+                        "on-surface-variant": "#ccc3d8",
+                        "outline": "#958da1",
+                        "outline-variant": "#4a4455",
+                        "primary-fixed-dim": "#d2bbff",
+                        "surface-bright": "#373941",
+                        "surface-container-lowest": "#0c0e15",
+                        "on-tertiary-fixed-variant": "#464652",
+                        "secondary-container": "#2f3aa3",
+                        "surface-container-highest": "#33343c",
+                        "surface-variant": "#33343c",
+                        "tertiary-fixed-dim": "#c7c5d3",
+                        "brand-glow": "rgba(124, 58, 237, 0.25)",
+                        "on-primary": "#3f008e",
+                        "on-error-container": "#ffdad6",
+                        "on-background": "#e2e2ec",
+                        "background": "#0a0a14",
+                        "on-secondary-fixed": "#000767",
+                        "primary-fixed": "#eaddff",
+                        "secondary": "#bdc2ff",
+                        "on-secondary-fixed-variant": "#2f3aa3",
+                        "surface": "#12121e",
+                        "status-watching": "#60a5fa",
+                        "on-primary-fixed-variant": "#5a00c6",
+                        "secondary-fixed": "#e0e0ff",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#25005a",
+                        "tertiary": "#c7c5d3",
+                        "primary": "#d2bbff",
+                        "inverse-on-surface": "#2e3038",
+                        "status-planning": "#c084fc",
+                        "inverse-surface": "#e2e2ec",
+                        "on-tertiary-container": "#e6e3f3",
+                        "surface-container-high": "#282a31",
+                        "on-tertiary-fixed": "#1b1b25",
+                        "surface-tint": "#d2bbff",
+                        "surface-container-low": "#191b22",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#bdc2ff",
+                        "status-watched": "#4ade80",
+                        "inverse-primary": "#732ee4",
+                        "tertiary-container": "#666572",
+                        "on-primary-container": "#ede0ff",
+                        "on-tertiary": "#302f3b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "base-unit": "4px",
+                        "gutter-mobile": "1rem",
+                        "gutter-desktop": "2rem",
+                        "stack-section": "3.5rem",
+                        "stack-component": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "display-hero-mobile": ["Plus Jakarta Sans"],
+                        "display-hero": ["Plus Jakarta Sans"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-tabular": ["JetBrains Mono"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "section-header": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-hero-mobile": ["40px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "display-hero": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "label-caps": ["11px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600" }],
+                        "data-tabular": ["13px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "section-header": ["20px", { "lineHeight": "1.4", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen pb-24 md:pb-0">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full bg-background/80 backdrop-blur-xl shadow-2xl shadow-brand-glow/20 flex justify-between items-center px-gutter-mobile md:px-gutter-desktop h-16 z-50">
+<div class="font-display-hero-mobile text-headline-lg tracking-tighter text-primary-fixed-dim">
+            StoryDex
+        </div>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-on-surface-variant hover:text-primary transition-all duration-300 font-label-caps text-label-caps" href="#">LIBRARY</a>
+<a class="text-primary font-bold hover:scale-105 transition-all duration-300 font-label-caps text-label-caps" href="#">DISCOVER</a>
+<a class="text-on-surface-variant hover:text-primary transition-all duration-300 font-label-caps text-label-caps" href="#">STATS</a>
+</div>
+<div class="flex items-center gap-4 text-primary">
+<span class="material-symbols-outlined hover:scale-105 transition-transform cursor-pointer">notifications</span>
+<span class="material-symbols-outlined hover:scale-105 transition-transform cursor-pointer">account_circle</span>
+</div>
+</header>
+<main class="w-full">
+<!-- Hero Section -->
+<section class="relative w-full h-[60vh] md:h-[70vh] min-h-[500px]">
+<div class="absolute inset-0 z-0">
+<div class="bg-cover bg-center w-full h-full opacity-60" data-alt="A highly detailed cinematic wallpaper showing a vast, star-filled nebula in deep space with vibrant violet and indigo hues. The image should be wide and immersive, suitable for a premium dark-mode media interface background, conveying a sense of epic scale and sci-fi discovery." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB-LY9yeflOpx92ZduZHvCmL3BUCA0jceQvhAqR9HrOgdW3S0WnuAq5hdSe53Fk_-S33UZeQE0mzQ1bpOAbiexdSZpvakZKOIohVYHVqglA-uUj-lR_uM_4kehF50DSlcn9DRolhzbOIbWjuHgt3bkCHgmM0mdhNDG9_MlM8rSjqgqW7z0T_cOzJy1AvoEtW-LCCrpoTCElNoo1H3VJf8NJiySwRctLv1iRYJ5t3iOFDArUmg-J_TIS')"></div>
+<!-- Gradient Scrim -->
+<div class="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background z-10"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10"></div>
+</div>
+<div class="relative z-20 container mx-auto px-gutter-mobile md:px-gutter-desktop h-full flex items-end pb-stack-section max-w-container-max">
+<div class="flex flex-col md:flex-row gap-8 items-end w-full">
+<!-- Poster -->
+<div class="w-1/3 md:w-1/5 shrink-0 -mb-16 md:-mb-24 rounded-xl overflow-hidden shadow-2xl border border-white/10 aspect-[3/4] hover:-translate-y-2 hover:shadow-brand-glow/30 transition-all duration-500 z-30">
+<img class="w-full h-full object-cover" data-alt="A striking, high-contrast poster image for a sci-fi epic. The artwork features a lone silhouette standing against a massive glowing portal emitting deep violet and blue light. The composition is highly stylized, minimal, and premium, designed to look stunning within a dark-mode glassmorphic UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa8ZJcT0Ie7xvVD5lY1-EC8hZ1I4bmWZ1t_g91fuCf2OW96_cgQvzk5PqS6QgpghjJSmOoWQEswrCvYLP6BtWjae64W083MZaR0ssqaOj1GfA-pS5qC5k44vTPyJq5F_T15x2HmlISRULEHwppA_FfOPTiedrmV7kt7xq6iogP0WCBn7XhLYmsuo-lvXtSbp9-useK4p2HZog1NoWI7dyCPC5ssF_IwROP-EWN_MgIawMLMjJ59adn"/>
+</div>
+<!-- Meta Data -->
+<div class="flex-1 text-left pb-4">
+<div class="flex gap-2 mb-3 flex-wrap">
+<span class="bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded font-label-caps text-label-caps uppercase tracking-wider backdrop-blur-sm">Sci-Fi</span>
+<span class="bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded font-label-caps text-label-caps uppercase tracking-wider backdrop-blur-sm">Space Opera</span>
+<span class="bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded font-label-caps text-label-caps uppercase tracking-wider backdrop-blur-sm">Action</span>
+</div>
+<h1 class="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-on-surface mb-4 text-shadow tracking-tighter">Starship Vanguard</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl text-shadow line-clamp-3">
+                            The epic saga of the Vanguard fleet as they traverse the unknown reaches of the galaxy, defending humanity against ancient cosmic threats while uncovering the secrets of the precursors.
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<div class="container mx-auto px-gutter-mobile md:px-gutter-desktop max-w-container-max relative z-20 mt-16 md:mt-24 pb-32">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Main Content (Timeline & Next to Watch) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-section">
+<!-- Next To Watch Card -->
+<section>
+<h2 class="font-section-header text-section-header mb-6 text-on-surface">Up Next</h2>
+<div class="bg-surface border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl relative overflow-hidden group hover:border-primary/30 transition-colors duration-300">
+<div class="absolute inset-0 bg-gradient-to-r from-brand-glow to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+<div class="flex gap-6 items-center relative z-10">
+<div class="w-24 md:w-32 aspect-video rounded-lg overflow-hidden shrink-0 bg-muted relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A cinematic still showing a futuristic spaceship bridge with glowing violet consoles and a view of a swirling galaxy outside. The scene is lit with atmospheric dark-mode lighting, perfect for a media player thumbnail." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA94OIznP0rB5gn0Pi1FE0Cxhj23EWIi4ZiahGAMcRC3zupC7Djqyaa_6CeRxUlSQ5DYUfugNzXhSx5l9UoY0-cO37fw2I17WXVRP60qzqguDTceoCckXyclYo_MzD4VaY2ppbO2-y3SYKMv74ivZ2MErUYlGsVYoV47GZAZVvf0wsWm1eKcB4HIAQw5-UTe4gr5jxCa8_3BQ1xxzrq8vRpWVdLtEhk5rQK5gYEQqmZPRkkhNdDOQ5O"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-white">play_circle</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="font-label-caps text-label-caps text-status-watching uppercase tracking-widest mb-1 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-status-watching animate-pulse"></span>
+                                         Continuing
+                                     </div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-2">Vanguard: The Awakening (Part 2)</h3>
+<div class="flex items-center gap-3 font-data-tabular text-data-tabular text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">movie</span> Film</span>
+<span>•</span>
+<span>2024</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Timeline Section -->
+<section>
+<h2 class="font-section-header text-section-header mb-8 text-on-surface">The Story Arc</h2>
+<div class="relative pl-6 md:pl-8 border-l-2 border-white/10 flex flex-col gap-8">
+<!-- Completed Entry -->
+<div class="relative">
+<div class="absolute -left-[35px] md:-left-[43px] top-1 w-6 h-6 md:w-8 md:h-8 rounded-full bg-status-watched/20 border border-status-watched/40 flex items-center justify-center">
+<span class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-status-watched shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
+</div>
+<div class="bg-surface border border-white/5 rounded-xl p-4 md:p-5 flex gap-4 hover:-translate-y-1 transition-transform duration-300">
+<div class="w-16 h-24 shrink-0 rounded bg-muted overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sleek, minimalist poster for the first installment of a sci-fi series. It features a stark white spaceship silhouette against a dark violet void, emphasizing a premium dark-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDO0CODZuvMzVzDxJTChfXqTEB_9SEuHAeIzQBoZ-oSLNjnK3xvdAqhZ6uH6ZYvVMK7bxmM1nNlvwrb52ZAEIAM0WfJcPa43NTuPvhSvm2noO57fmGbXp3ioO98p7ENzZqMT4keD0VfUIoT6s5IjczJgl0sSqAYUShJDI68GgfJTrFAMltE4aM33x4tfFR33d6QjL38AskcVPgswySan6lceGLvg0eBgKIwtfi3BY7jKseTlIVeKEar"/>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-section-header text-body-md md:text-section-header text-on-surface font-bold">Starship Vanguard: Origins</h4>
+<span class="bg-status-watched/10 text-status-watched border border-status-watched/20 px-2 py-0.5 rounded font-label-caps text-[10px] uppercase tracking-wider">Watched</span>
+</div>
+<div class="flex items-center gap-3 font-data-tabular text-data-tabular text-on-surface-variant mb-2">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">tv</span> TV Series</span>
+<span>•</span>
+<span>2020 - 2022</span>
+<span>•</span>
+<span>24 Eps</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Planning Entry -->
+<div class="relative">
+<div class="absolute -left-[35px] md:-left-[43px] top-1 w-6 h-6 md:w-8 md:h-8 rounded-full bg-status-planning/20 border border-status-planning/40 flex items-center justify-center">
+<span class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-status-planning shadow-[0_0_10px_rgba(192,132,252,0.5)]"></span>
+</div>
+<div class="bg-surface border border-white/5 rounded-xl p-4 md:p-5 flex gap-4 opacity-80 hover:opacity-100 transition-opacity duration-300">
+<div class="w-16 h-24 shrink-0 rounded bg-muted overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A mysterious, brooding poster for an upcoming sci-fi spin-off. Features an abstract swirling vortex in deep indigo tones. The artwork should be high quality, suitable for a premium streaming app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCG9YiUjxJfX_S1mGHsFT-WnmkOjEVV5u_rW_V4Wro-zzdpgXnIH1oC8KY8nY5sv4gfCroOP38G6pmtwFOGXoOoaKeOwQUGDa4m6jYO2QbDKp9_MIZXAq26Vb_n3dWWf4v1Iv7gHirfq5oyl9_O2Z62LlmkI1Luq78GO4N5kS9i6prkRZ0tSMVgjefmFlT9M8dC2QntDyyvwISpZl6g_D6fw5gkiVdQBNiKQcJkG9sCFQuFvN6HgwG1"/>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-section-header text-body-md md:text-section-header text-on-surface font-bold">Vanguard: The Outer Rim</h4>
+<span class="bg-status-planning/10 text-status-planning border border-status-planning/20 px-2 py-0.5 rounded font-label-caps text-[10px] uppercase tracking-wider">Plan to Watch</span>
+</div>
+<div class="flex items-center gap-3 font-data-tabular text-data-tabular text-on-surface-variant mb-2">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">tv</span> TV Series</span>
+<span>•</span>
+<span>2025</span>
+<span>•</span>
+<span>12 Eps</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Side Rail (Stats & Meta) -->
+<div class="lg:col-span-4">
+<div class="sticky top-24 flex flex-col gap-6">
+<!-- Progress Card -->
+<div class="bg-surface border border-white/10 rounded-2xl p-6 shadow-xl">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-4">Franchise Progress</h3>
+<div class="flex items-end gap-2 mb-2">
+<span class="font-display-hero-mobile text-display-hero-mobile text-on-surface">50</span>
+<span class="font-body-md text-on-surface-variant mb-2">% Complete</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-2 bg-muted rounded-full overflow-hidden mb-4">
+<div class="h-full bg-gradient-to-r from-primary-container to-primary w-1/2 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
+</div>
+<div class="flex justify-between font-data-tabular text-data-tabular text-on-surface-variant">
+<span>2 / 4 Entries</span>
+<span>24 / 48 Episodes</span>
+</div>
+</div>
+<!-- Stats Card -->
+<div class="bg-surface border border-white/10 rounded-2xl p-6 shadow-xl">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mb-4">Details</h3>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Timeline</span>
+<span class="font-data-tabular text-data-tabular text-on-surface">2020 - Present</span>
+</div>
+<hr class="border-white/5"/>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Total Media</span>
+<span class="font-data-tabular text-data-tabular text-on-surface">4 Items</span>
+</div>
+<hr class="border-white/5"/>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Formats</span>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-sm text-on-surface-variant" title="TV Series">tv</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant" title="Film">movie</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 pb-safe bg-surface-container/90 backdrop-blur-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">subscriptions</span>
+<span class="font-label-caps text-label-caps text-[10px]">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold scale-110 transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1">explore</span>
+<span class="font-label-caps text-label-caps text-[10px]">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">leaderboard</span>
+<span class="font-label-caps text-label-caps text-[10px]">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 hover:text-primary-fixed transition-transform duration-300 active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-label-caps text-label-caps text-[10px]">Settings</span>
+</a>
+</nav>
+</body></html>
