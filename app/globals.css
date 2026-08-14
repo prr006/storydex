@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=JetBrains+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -40,6 +41,32 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-light: var(--brand-light);
   --color-neutral-800: var(--neutral-800);
+  
+  /* Stitch 2.0 Color Palette */
+  --color-surface: #12121e;
+  --color-surface-container: #1d1f26;
+  --color-surface-container-high: #282a31;
+  --color-surface-container-highest: #33343c;
+  --color-surface-container-low: #191b22;
+  --color-surface-container-lowest: #0c0e15;
+  --color-surface-dim: #11131a;
+  --color-surface-bright: #373941;
+  --color-on-surface: #e2e2ec;
+  --color-on-surface-variant: #ccc3d8;
+  --color-primary-fixed: #eaddff;
+  --color-primary-fixed-dim: #d2bbff;
+  --color-primary-container: #7c3aed;
+  --color-on-primary-container: #ede0ff;
+  --color-status-watching: #60a5fa;
+  --color-status-watched: #4ade80;
+  --color-status-planning: #c084fc;
+  --color-muted-deep: #1a1a2c;
+  
+  /* Font families */
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -51,43 +78,43 @@
 
 :root {
   color-scheme: dark;
-  /* Background — slightly richer deep navy, not pure black */
-  --background: #0d0d1a;
-  --foreground: #e8e8f2;
+  /* Stitch 2.0 Deep Midnight Navy Background */
+  --background: #0a0a14;
+  --foreground: #e2e2ec;
   --card: #12121e;
-  --card-foreground: #e8e8f2;
+  --card-foreground: #e2e2ec;
   --popover: #12121e;
-  --popover-foreground: #e8e8f2;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #818cf8;
-  --secondary-foreground: #ffffff;
+  --popover-foreground: #e2e2ec;
+  --primary: #d2bbff;
+  --primary-foreground: #3f008e;
+  --secondary: #bdc2ff;
+  --secondary-foreground: #131e8c;
   --muted: #1a1a2c;
-  --muted-foreground: #888899;
-  --accent: #6366f1;
+  --muted-foreground: #ccc3d8;
+  --accent: #7c3aed;
   --accent-foreground: #ffffff;
-  --destructive: #f43f5e;
-  --border: #1c1c2e;
-  --input: #12121e;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
-  --chart-2: #818cf8;
-  --chart-3: #a5b4fc;
-  --chart-4: #c7d2fe;
-  --chart-5: #e0e7ff;
+  --destructive: #ffb4ab;
+  --border: #4a4455;
+  --input: #191b22;
+  --ring: #d2bbff;
+  --chart-1: #d2bbff;
+  --chart-2: #bdc2ff;
+  --chart-3: #c7c5d3;
+  --chart-4: #e4e1f0;
+  --chart-5: #eaddff;
   --radius: 0.75rem;
   --sidebar: #12121e;
-  --sidebar-foreground: #e8e8f2;
-  --sidebar-primary: #6366f1;
+  --sidebar-foreground: #e2e2ec;
+  --sidebar-primary: #7c3aed;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1a1a2c;
-  --sidebar-accent-foreground: #e8e8f2;
-  --sidebar-border: #1c1c2e;
-  --sidebar-ring: #6366f1;
-  --brand: #6366f1;
-  --brand-dark: #4f46e5;
-  --brand-light: #818cf8;
-  --neutral-800: #0d0d1a;
+  --sidebar-accent-foreground: #e2e2ec;
+  --sidebar-border: #4a4455;
+  --sidebar-ring: #d2bbff;
+  --brand: #7c3aed;
+  --brand-dark: #5a00c6;
+  --brand-light: #d2bbff;
+  --neutral-800: #0a0a14;
 }
 
 @layer base {
@@ -101,8 +128,46 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
   }
+  
+  /* Typography utilities */
+  .font-display-hero {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+  .font-display-hero-mobile {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .font-headline-lg {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+  .font-section-header {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .font-label-caps {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .font-data-tabular {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    line-height: 1;
+  }
+  
   /* Scrollbar utilities */
   .scrollbar-none {
     scrollbar-width: none;
@@ -111,6 +176,55 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Glass panel effect */
+  .glass-panel {
+    background: rgba(29, 31, 38, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Brand glow shadow */
+  .shadow-brand-glow {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
+  }
+  .shadow-brand-glow\/20 {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
+  }
+  
+  /* Text shadow for hero text */
+  .text-shadow {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  }
+  .text-shadow-sm {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+  
+  /* Scrim gradient */
+  .scrim-gradient {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
+  }
+  
+  /* Fade-in animation */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out forwards;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  
+  @keyframes fadeIn {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  
   /* Reduced-motion: honour system preference */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
