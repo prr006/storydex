@@ -85,6 +85,22 @@ export default function FranchiseDetail({ params }: PageProps) {
   const { id } = use(params)
   const { franchises, loading } = useLibrary()
 
+  // Calculate counts - moved before conditional returns to satisfy Rules of Hooks
+  const counts = useMemo(() => {
+    const c: Record<BadgeKey, number> = {
+      WATCHED: 0, WATCHING: 0, PLANNING: 0, PAUSED: 0, DROPPED: 0, NOT_WATCHED: 0, UPCOMING: 0,
+    }
+    if (!franchises || franchises.length === 0) return c
+    const currentYear = new Date().getFullYear()
+    franchises.forEach((f) => {
+      f.seasons.forEach((s) => {
+        const b = getBadge(s, currentYear)
+        c[b.type]++
+      })
+    })
+    return c
+  }, [franchises])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -132,17 +148,6 @@ export default function FranchiseDetail({ params }: PageProps) {
   const yearRange = years.length ? `${Math.min(...years)} - Present` : 'Unknown'
   const totalEpisodes = franchise.seasons.reduce((sum, s) => sum + (s.episodes || 0), 0)
   const currentYear = new Date().getFullYear()
-
-  const counts = useMemo(() => {
-    const c: Record<BadgeKey, number> = {
-      WATCHED: 0, WATCHING: 0, PLANNING: 0, PAUSED: 0, DROPPED: 0, NOT_WATCHED: 0, UPCOMING: 0,
-    }
-    franchise.seasons.forEach((s) => {
-      const b = getBadge(s, currentYear)
-      c[b.type]++
-    })
-    return c
-  }, [franchise, currentYear])
 
   // Calculate circular progress
   const circumference = 2 * Math.PI * 45
@@ -222,7 +227,7 @@ export default function FranchiseDetail({ params }: PageProps) {
                   <>
                     <span className="text-white/30">•</span>
                     <div className="flex items-center gap-1.5 text-status-watching">
-                      <span className="w-2 h-2 rounded-full bg-status-watching animate-pulse" />
+                      <span class="w-2 h-2 rounded-full bg-status-watching animate-pulse" />
                       <span>Watching</span>
                     </div>
                   </>
@@ -241,10 +246,10 @@ export default function FranchiseDetail({ params }: PageProps) {
       {/* ── Main Content Grid ── */}
       <div className="container mx-auto px-gutter-mobile md:px-gutter-desktop max-w-container-max relative z-20 mt-16 md:mt-24 pb-32">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
+
           {/* Main Content (Timeline & Next to Watch) */}
           <div className="lg:col-span-8 flex flex-col gap-12">
-            
+
             {/* Next To Watch Card - Elevated CTA */}
             {franchise.nextToWatch && (
               <section className="relative fade-in stagger-1">
@@ -266,11 +271,11 @@ export default function FranchiseDetail({ params }: PageProps) {
                         <Play className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-500 shadow-xl drop-shadow-[0_0_15px_rgba(124,58,237,0.8)]" />
                       </div>
                     </div>
-                    
+
                     {/* Info */}
                     <div className="flex-1 w-full">
                       <div className="font-label-caps text-label-caps text-status-watching uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-status-watching shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" />
+                        <span class="w-2 h-2 rounded-full bg-status-watching shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" />
                         Up Next • {franchise.nextToWatch.name}
                       </div>
                       <div className="flex items-center gap-4 font-data-tabular text-[12px] md:text-data-tabular text-on-surface-variant mb-6 bg-black/20 w-fit px-3 py-1.5 rounded-md border border-white/5">
@@ -278,11 +283,11 @@ export default function FranchiseDetail({ params }: PageProps) {
                           <FormatIcon format={franchise.nextToWatch.format} />
                           {franchise.nextToWatch.format || 'TV'}
                         </span>
-                        <span className="text-white/20">•</span>
+                        <span class="text-white/20">•</span>
                         <span>{franchise.nextToWatch.year || 'Unknown'}</span>
                         {franchise.nextToWatch.episodes > 0 && (
                           <>
-                            <span className="text-white/20">•</span>
+                            <span class="text-white/20">•</span>
                             <span>{franchise.nextToWatch.episodes} eps</span>
                           </>
                         )}
@@ -306,13 +311,13 @@ export default function FranchiseDetail({ params }: PageProps) {
                 </h2>
                 <div className="hidden md:flex gap-4 font-data-tabular text-[11px] text-on-surface-variant">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-watched" /> Watched
+                    <span class="w-2.5 h-2.5 rounded-full bg-status-watched" /> Watched
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-watching" /> Watching
+                    <span class="w-2.5 h-2.5 rounded-full bg-status-watching" /> Watching
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-planning" /> Planned
+                    <span class="w-2.5 h-2.5 rounded-full bg-status-planning" /> Planned
                   </div>
                 </div>
               </div>
@@ -321,14 +326,14 @@ export default function FranchiseDetail({ params }: PageProps) {
                 {franchise.seasons.map((season, i) => {
                   const badge = getBadge(season, currentYear)
                   const isDimmed = badge.type === 'UPCOMING' || badge.type === 'NOT_WATCHED'
-                  
+
                   return (
                     <div key={season.id} className={`relative story-map-node group ${isDimmed ? 'opacity-70 hover:opacity-100' : ''}`}>
                       {/* Vertical line */}
                       {i < franchise.seasons.length - 1 && (
                         <div className="story-map-line absolute left-[15px] md:left-[31px] top-6 bottom-[-8px] w-px bg-white/10" />
                       )}
-                      
+
                       <div className="relative z-10 flex items-start gap-4 md:gap-6 py-2">
                         {/* Map Node Marker */}
                         <div className="w-8 h-8 md:w-16 md:h-16 shrink-0 flex items-center justify-center mt-2 md:mt-0">
@@ -339,21 +344,21 @@ export default function FranchiseDetail({ params }: PageProps) {
                             'bg-white/5 border-2 border-white/10'
                           }`}>
                             {badge.type === 'WATCHED' && <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4 text-status-watched" />}
-                            {badge.type === 'WATCHING' && <span className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-status-watching animate-pulse" />}
+                            {badge.type === 'WATCHING' && <span class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-status-watching animate-pulse" />}
                             {badge.type === 'PLANNING' && <Bookmark className="w-2 h-2 md:w-3 md:h-3 text-status-planning" />}
                           </div>
                         </div>
 
                         {/* Card */}
                         <div className={`flex-1 rounded-xl p-3 md:p-4 flex gap-4 transition-all duration-300 ${
-                          badge.type === 'WATCHING' 
-                            ? 'bg-surface-container border-l-4 border-l-status-watching border-y border-r border-white/10 shadow-xl relative overflow-hidden' 
+                          badge.type === 'WATCHING'
+                            ? 'bg-surface-container border-l-4 border-l-status-watching border-y border-r border-white/10 shadow-xl relative overflow-hidden'
                             : 'bg-surface-container-low/50 hover:bg-surface-container border border-white/5 hover:border-white/10 shadow-lg'
                         }`}>
                           {badge.type === 'WATCHING' && (
                             <div className="absolute inset-0 bg-gradient-to-r from-status-watching/5 to-transparent pointer-events-none" />
                           )}
-                          
+
                           {/* Thumbnail */}
                           <div className="w-16 h-24 shrink-0 rounded-md bg-muted overflow-hidden border border-white/10 relative">
                             <Image
@@ -385,15 +390,15 @@ export default function FranchiseDetail({ params }: PageProps) {
                                 <FormatIcon format={season.format} />
                                 {season.format || 'TV'}
                               </span>
-                              <span className="text-white/20 hidden md:inline">•</span>
+                              <span class="text-white/20 hidden md:inline">•</span>
                               {season.year > 0 && <span>{season.year}</span>}
-                              <span className="text-white/20 hidden md:inline">•</span>
+                              <span class="text-white/20 hidden md:inline">•</span>
                               <span>{season.episodes || '?'} Eps</span>
                             </div>
                             {/* Progress bar for watching */}
                             {badge.type === 'WATCHING' && season.progress && (
                               <div className="w-full md:w-2/3 h-1.5 bg-black/50 rounded-full overflow-hidden mt-2">
-                                <div 
+                                <div
                                   className="h-full bg-status-watching rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]"
                                   style={{ width: `${season.progress}%` }}
                                 />
@@ -412,7 +417,7 @@ export default function FranchiseDetail({ params }: PageProps) {
           {/* Side Rail (Stats & Meta) */}
           <div className="lg:col-span-4 hidden lg:block">
             <div className="sticky top-24 flex flex-col gap-6">
-              
+
               {/* Franchise Data Card */}
               <div className="bg-surface-container-high/50 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm fade-in stagger-3">
                 <h3 className="font-label-caps text-label-caps text-primary uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -463,18 +468,18 @@ export default function FranchiseDetail({ params }: PageProps) {
                   {/* Circular Progress */}
                   <div className="relative w-32 h-32 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle 
-                        className="text-white/5 stroke-current" 
-                        cx="50" cy="50" 
-                        fill="transparent" 
-                        r="45" 
-                        strokeWidth="8" 
+                      <circle
+                        className="text-white/5 stroke-current"
+                        cx="50" cy="50"
+                        fill="transparent"
+                        r="45"
+                        strokeWidth="8"
                       />
-                      <circle 
-                        className="text-primary stroke-current" 
-                        cx="50" cy="50" 
-                        fill="transparent" 
-                        r="45" 
+                      <circle
+                        className="text-primary stroke-current"
+                        cx="50" cy="50"
+                        fill="transparent"
+                        r="45"
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
                         strokeLinecap="round"
