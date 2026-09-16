@@ -5,13 +5,13 @@ import { ProgressBar } from '@/components/Bars'
 import { StatusChip } from '@/components/StatusMark'
 import { cn } from '@/lib/utils'
 import {
+  entryRatio,
   episodeLabel,
   formatFormat,
   formatScore,
   getEntryStatus,
   isUpcoming,
 } from '@/lib/design'
-import { progressOfEntry } from '@/components/Cards'
 import type { Season } from '@/lib/franchise'
 
 /* ==========================================================================
@@ -44,8 +44,8 @@ export function EntriesTable({ entries }: { entries: Season[] }) {
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => (
-              <Row key={entry.id} entry={entry} />
+            {entries.map((entry, index) => (
+              <Row key={entry.id} entry={entry} index={index} total={entries.length} />
             ))}
           </tbody>
         </table>
@@ -54,10 +54,10 @@ export function EntriesTable({ entries }: { entries: Season[] }) {
   )
 }
 
-function Row({ entry }: { entry: Season }) {
+function Row({ entry, index, total }: { entry: Season; index: number; total: number }) {
   const status = getEntryStatus(entry)
   const score = formatScore(entry.score)
-  const ratio = progressOfEntry(entry)
+  const ratio = entryRatio(entry)
   const current = status === 'watching'
 
   return (
@@ -93,8 +93,11 @@ function Row({ entry }: { entry: Season }) {
             ) : (
               <span className="block truncate text-body font-semibold text-ink">{entry.name}</span>
             )}
+            {/* Where this entry sits in its story — the one fact the rest of
+                the row doesn't already carry. */}
             <span className="num mt-0.5 block truncate text-[0.6875rem] text-ink-3">
-              {current ? episodeLabel(entry) : isUpcoming(entry) ? 'Not aired yet' : formatFormat(entry.format)}
+              Entry {index + 1} of {total}
+              {current ? ` · ${episodeLabel(entry)}` : isUpcoming(entry) ? ' · not aired yet' : ''}
             </span>
           </span>
         </span>

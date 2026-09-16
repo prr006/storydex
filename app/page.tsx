@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { useLibraryContext } from '@/components/AppShell'
 import { EmptyLibrary } from '@/components/EmptyLibrary'
 import { StoryHero } from '@/components/StoryHero'
-import { MediaCard } from '@/components/Cards'
-import { Rail } from '@/components/Rail'
+import { StoryLadder } from '@/components/StoryLadder'
+import { Atmosphere } from '@/components/Atmosphere'
 import { continueWatching, libraryTotals } from '@/lib/summaries'
 
 /* ==========================================================================
@@ -15,13 +15,14 @@ import { continueWatching, libraryTotals } from '@/lib/summaries'
 
      no library  → the pitch, the import, and real AniList artwork (delegated
                    entirely to EmptyLibrary, which is also the empty state for
-                   Home, Library and Franchises)
-     library     → the story you were last inside, full bleed, plus the rest of
-                   your active stories
+                   Home, Library and Collections)
+     library     → the story you were last inside, entered at full size, then
+                   the rest of the stories you are inside
 
    A returning user should never be greeted with marketing copy for a product
-   they are already using — and they should never have to read a sentence
-   before they can see their own artwork.
+   they already use, and never with a heading where artwork should be. So this
+   page is the front door of Home: one story owns the screen, the others follow
+   as rungs, and the three destinations sit quietly at the foot.
    ========================================================================== */
 
 export default function WelcomePage() {
@@ -30,8 +31,9 @@ export default function WelcomePage() {
 
   if (loading) {
     return (
-      <div>
-        <div className="h-[clamp(24rem,58vh,40rem)] w-full animate-pulse bg-surface" />
+      <div className="shell relative pt-16">
+        <Atmosphere />
+        <div className="h-16 w-[28rem] max-w-full animate-pulse rounded-md bg-surface-2" />
       </div>
     )
   }
@@ -42,7 +44,7 @@ export default function WelcomePage() {
 
   const active = continueWatching(franchises)
   const lead = active[0] ?? null
-  const rest = active.slice(1)
+  const rest = active.slice(1, 5)
   const totals = libraryTotals(franchises)
 
   return (
@@ -50,23 +52,34 @@ export default function WelcomePage() {
       {lead ? (
         <StoryHero franchise={lead} />
       ) : (
-        <section className="shell pt-16">
-          <p className="eyebrow">Your collection</p>
-          <h1 className="mt-3 text-hero font-bold text-ink">
-            {totals.stories} {totals.stories === 1 ? 'story' : 'stories'}, all watched.
-          </h1>
+        <section className="relative">
+          <Atmosphere />
+          <div className="shell relative py-24">
+            <p className="eyebrow">Your collection</p>
+            <h1 className="mt-4 text-display font-bold text-ink">
+              {totals.stories} {totals.stories === 1 ? 'story' : 'stories'}, all watched.
+            </h1>
+            <p className="mt-5 max-w-[58ch] text-body text-ink-2">
+              Nothing in progress. Everything in this library has been seen through to the end —
+              the shelf is ready for something new.
+            </p>
+            <Link
+              href="/discover"
+              className="mt-8 inline-flex h-11 items-center rounded-full bg-brand px-5 text-body font-semibold text-white transition-colors hover:bg-brand-strong"
+            >
+              Find the next story
+            </Link>
+          </div>
         </section>
       )}
 
       <div className="shell">
         {rest.length > 0 && (
-          <section className="mt-14">
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-head font-semibold text-ink">Pick up where you left off</h2>
-                <p className="text-small text-ink-3">
-                  {rest.length} more in progress
-                </p>
+          <section className="mt-16">
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h2 className="text-head font-bold text-ink">Also in progress</h2>
+                <p className="text-small text-ink-3">{rest.length} more stories</p>
               </div>
               <Link
                 href="/dashboard"
@@ -79,18 +92,14 @@ export default function WelcomePage() {
               </Link>
             </div>
 
-            <Rail itemWidth={340}>
-              {rest.map((franchise, index) => (
-                <MediaCard key={franchise.id} franchise={franchise} index={index} />
-              ))}
-            </Rail>
+            <StoryLadder stories={rest} />
           </section>
         )}
 
-        <section className="mt-16 grid gap-4 sm:grid-cols-3">
+        <section className="mt-20 grid gap-4 sm:grid-cols-3">
           {[
             { href: '/library', label: 'Library', detail: 'Search, filter, three densities' },
-            { href: '/franchises', label: 'Franchises', detail: 'Every story as a collection' },
+            { href: '/franchises', label: 'Collections', detail: 'Every story as one object' },
             { href: '/discover', label: 'Discover', detail: 'Live AniList, marked against yours' },
           ].map((item) => (
             <Link

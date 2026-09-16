@@ -62,6 +62,16 @@
   --text-hero--line-height: 0.98;
   --text-hero--letter-spacing: -0.035em;
 
+  /* StoryDex goes louder than a media app here: story titles and era markers
+     are set at poster scale, because the story is the subject. */
+  --text-mega: clamp(3.25rem, 9vw, 8rem);
+  --text-mega--line-height: 0.9;
+  --text-mega--letter-spacing: -0.045em;
+
+  --text-era: clamp(2.75rem, 6.5vw, 6rem);
+  --text-era--line-height: 0.85;
+  --text-era--letter-spacing: -0.05em;
+
   /* ── Space & shape ──────────────────────────────────────────────────── */
   --spacing-shell: clamp(1.25rem, 4vw, 3rem);
   --container-content: 1440px;
@@ -160,6 +170,12 @@
   --accent-strong: var(--brand-strong);
   --accent-soft: var(--brand-soft);
 
+  /* Story atmosphere: three washes derived from the accent, layered under a
+     page. Each story therefore has its own air — restrained, never a rainbow. */
+  --air-1: color-mix(in oklab, var(--accent) 26%, transparent);
+  --air-2: color-mix(in oklab, var(--accent) 13%, transparent);
+  --air-3: color-mix(in oklab, var(--accent) 6%, transparent);
+
   /* Depth */
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -24px rgb(0 0 0 / 0.9);
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.55), 0 28px 60px -28px rgb(0 0 0 / 0.95);
@@ -225,6 +241,32 @@ body {
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/* The ambient field breathes very slowly. Nothing else in the app moves on its
+   own, and this is subtle enough to read as depth rather than animation. */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -1.5%, 0) scale(1.06);
+  }
+}
+
+/* The lit end of a story path — a soft travelling highlight, used once per
+   path so the current position reads as a live point. */
+@keyframes pulse-node {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scale(1.55);
   }
 }
 
@@ -341,6 +383,82 @@ body {
 }
 
 /** A 1px rule that opens a section. */
-@utility section-rule {
-  border-top: 1px solid var(--line);
+/* ==========================================================================
+   STORYDEX SIGNATURE
+   --------------------------------------------------------------------------
+   Two devices carry the identity, and they are used together everywhere:
+
+   THE PATH   a story is a route with one node per entry. Lit where you've
+              watched, dark where you haven't, and the node you are standing on
+              is a progress ring rather than a dot.
+   THE AIR    each story has its own atmosphere, mixed from its artwork's
+              colour. Pages therefore feel like places, not records.
+   ========================================================================== */
+
+/** The ambient field. Sits behind everything, never intercepts the pointer. */
+@utility story-air {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -20% -10% -10% -20%;
+    background:
+      radial-gradient(48% 42% at 14% 6%, var(--air-1) 0%, transparent 62%),
+      radial-gradient(38% 36% at 88% 12%, var(--air-2) 0%, transparent 66%),
+      radial-gradient(60% 50% at 62% 96%, var(--air-2) 0%, transparent 72%);
+    animation: drift 42s ease-in-out infinite;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 0%, var(--canvas) 88%);
+  }
+}
+
+/** A very fine grain, so large dark fields are not perfectly flat. */
+@utility grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+/** Artwork that fades in from a corner, for atmospheric backdrops. */
+@utility bleed-soft {
+  mask-image: radial-gradient(120% 120% at 20% 30%, #000 40%, transparent 85%);
+}
+
+/** A floating layer that straddles an edge: panels, next-up cards, markers. */
+@utility float-panel {
+  background-color: color-mix(in oklab, var(--surface) 82%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: blur(20px);
+}
+
+/** The lit end of a path node. */
+@utility node-halo {
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+/** A dim marker for the future: dashed, so the route reads as unwalked. */
+@utility unwalked {
+  background-image: linear-gradient(
+    to right,
+    var(--line-strong) 0 6px,
+    transparent 6px 12px
+  );
+  background-size: 12px 1.5px;
+  background-repeat: repeat-x;
+  background-position: center;
 }

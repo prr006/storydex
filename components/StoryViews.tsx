@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Cover, FormatMark } from '@/components/Cover'
-import { ProgressBar, SegmentBar } from '@/components/Bars'
+import { Cover } from '@/components/Cover'
+import { StoryPath } from '@/components/Path'
+import { StoryObject } from '@/components/StoryObject'
 import { StatusChip } from '@/components/StatusMark'
-import { PosterCard, phaseToStatus } from '@/components/Cards'
 import { cn } from '@/lib/utils'
 import {
   accentVars,
@@ -17,32 +17,86 @@ import {
   getStoryPhase,
   getStoryProgress,
   phaseCopy,
+  phaseToStatus,
+  type StoryPhase,
 } from '@/lib/design'
+import { EASE } from '@/lib/motion'
 import type { Franchise } from '@/lib/franchise'
 
 /* ==========================================================================
-   The three densities
+   The archive, at three densities
    --------------------------------------------------------------------------
-   One dataset, three reading behaviours — the answer to "don't force one giant
-   poster wall" without giving up a poster wall:
+   One dataset, three reading behaviours — and all three stay in the story
+   language rather than becoming a poster wall:
 
-     Grid   scanning by artwork. Large posters, minimal text. The default.
-     List   scanning by progress. 16:9 plates with the bar given room to read.
-     Table  comparing many at once. Dense metadata, dark rows, artwork kept.
+     Archival   grouped by where each story stands with you, and drawn as story
+                objects (covers fanned, path across the foot). Standing alone in
+                a story is the loudest thing on the page, which is the point of
+                an archive you actually keep.
+     List       scanning by progress. Plate, path, next entry.
+     Table      comparing many at once. Dense metadata, artwork kept.
 
-   All three stay inside the same visual language: artwork plates, one accent
-   bar, status chips, type set at the same scale.
+   Grouping is the archive's spine: the section headings are the same lifecycle
+   words used everywhere else in StoryDex, so the library reads as a shelf you
+   have organised — not a bag of results. Grouping only appears when there is
+   enough on the page to group.
    ========================================================================== */
 
+/** The order a shelf is actually browsed in: inside first, then waiting, then done. */
+const SHELF_ORDER: { phase: StoryPhase; title: string; note: string }[] = [
+  { phase: 'watching', title: 'Inside right now', note: 'Part-way through' },
+  { phase: 'caught-up', title: 'Caught up', note: 'Waiting on more' },
+  { phase: 'paused', title: 'On hold', note: 'Set down for now' },
+  { phase: 'backlog', title: 'Not started', note: 'Kept, nothing watched' },
+  { phase: 'planned', title: 'Planned', note: 'Marked for later' },
+  { phase: 'complete', title: 'Completed', note: 'Start to end' },
+  { phase: 'dropped', title: 'Set aside', note: 'Walked away from' },
+]
+
 /* -------------------------------------------------------------------------- */
-/* Grid                                                                       */
+/* Archival — the default density                                             */
 /* -------------------------------------------------------------------------- */
 
-export function StoryGrid({ franchises }: { franchises: Franchise[] }) {
+export function StoryGrid({
+  franchises,
+  grouped = true,
+}: {
+  franchises: Franchise[]
+  grouped?: boolean
+}) {
+  if (!grouped) {
+    return (
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {franchises.map((franchise, index) => (
+          <StoryObject key={franchise.id} franchise={franchise} index={index} />
+        ))}
+      </div>
+    )
+  }
+
+  const shelves = SHELF_ORDER.map((shelf) => ({
+    ...shelf,
+    items: franchises.filter((franchise) => getStoryPhase(franchise) === shelf.phase),
+  })).filter((shelf) => shelf.items.length > 0)
+
   return (
-    <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {franchises.map((franchise, index) => (
-        <PosterCard key={franchise.id} franchise={franchise} index={index} />
+    <div className="space-y-14">
+      {shelves.map((shelf) => (
+        <section key={shelf.phase}>
+          {/* The shelf heading: a word, a count, a rule to the edge of the page. */}
+          <div className="flex items-center gap-4">
+            <h2 className="text-card font-bold text-ink">{shelf.title}</h2>
+            <span className="num text-small text-ink-3">{shelf.items.length}</span>
+            <span className="h-px flex-1 bg-line" aria-hidden />
+            <span className="hidden text-small text-ink-3 sm:block">{shelf.note}</span>
+          </div>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {shelf.items.map((franchise, index) => (
+              <StoryObject key={franchise.id} franchise={franchise} index={index} />
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   )
@@ -73,14 +127,14 @@ function StoryRow({ franchise, index }: { franchise: Franchise; index: number })
     <motion.li
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.025, 0.2), ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.18), ease: EASE }}
       style={accentVars(franchise)}
     >
       <Link
         href={`/franchise/${franchise.id}`}
         className="group/art flex items-center gap-4 rounded-md border border-line bg-surface p-3 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15 hover:bg-surface-2"
       >
-        <span className="relative block h-[72px] w-[124px] shrink-0 overflow-hidden rounded-sm">
+        <span className="relative block h-[76px] w-[128px] shrink-0 overflow-hidden rounded-sm">
           <Cover
             src={art}
             alt=""
@@ -90,7 +144,7 @@ function StoryRow({ franchise, index }: { franchise: Franchise; index: number })
             edged={false}
             rounded={false}
             hoverZoom
-            sizes="124px"
+            sizes="128px"
             className="h-full w-full"
           />
         </span>
@@ -102,21 +156,22 @@ function StoryRow({ franchise, index }: { franchise: Franchise; index: number })
           </span>
 
           <span className="mt-1 block truncate text-small text-ink-3">
-            {next ? `Next: ${next.name}` : 'Everything watched'}
+            {next
+              ? `Next: ${next.name}`
+              : `${phaseCopy(phase).label} — nothing left to watch`}
           </span>
 
-          <span className="mt-2.5 flex max-w-[26rem] items-center gap-3">
-            <ProgressBar value={progress.ratio} height="sm" animate={false} className="flex-1" />
-            <span className="num shrink-0 text-small text-ink-2">
-              {progress.completed}/{progress.total}
-            </span>
+          <span className="mt-3 block max-w-[30rem]">
+            <StoryPath entries={franchise.seasons} size="rail" dashedAhead />
           </span>
         </span>
 
-        <span className="hidden w-[13rem] shrink-0 lg:block">
-          <SegmentBar entries={franchise.seasons} height="xs" animate={false} />
-          <span className="num mt-2 block text-small text-ink-3">
-            {franchise.seasons.length} entries · {episodes.toLocaleString('en-US')} eps
+        <span className="hidden w-[14rem] shrink-0 text-right lg:block">
+          <span className="num block text-body text-ink-2">
+            {progress.completed}/{progress.total} entries
+          </span>
+          <span className="num mt-1 block text-small text-ink-3">
+            {episodes.toLocaleString('en-US')} eps · {Math.round(progress.ratio * 100)}%
           </span>
         </span>
       </Link>
@@ -137,9 +192,9 @@ export function StoryTable({ franchises }: { franchises: Franchise[] }) {
           <thead>
             <tr className="border-b border-line">
               <Th className="w-[320px] pl-4">Story</Th>
-              <Th className="w-[92px]">Entries</Th>
+              <Th className="w-[100px]">Entries</Th>
               <Th className="w-[150px]">Progress</Th>
-              <Th className="w-[110px]">Episodes</Th>
+              <Th className="w-[160px]">Episodes</Th>
               <Th className="w-[130px]">Status</Th>
               <Th className="w-[150px]">Next up</Th>
               <Th className="w-[80px] pr-4 text-right">Score</Th>
@@ -187,8 +242,8 @@ function StoryTableRow({ franchise }: { franchise: Franchise }) {
             <span className="block truncate text-body font-semibold text-ink transition-colors group-hover/row:text-brand-strong">
               {franchise.name}
             </span>
-            <span className="mt-1 block">
-              <SegmentBar entries={franchise.seasons} height="xs" animate={false} className="max-w-[8rem]" />
+            <span className="mt-1.5 block max-w-[9rem]">
+              <StoryPath entries={franchise.seasons} size="spark" dashedAhead />
             </span>
           </span>
         </Link>
@@ -198,7 +253,12 @@ function StoryTableRow({ franchise }: { franchise: Franchise }) {
 
       <td className="py-3 pr-4">
         <span className="flex items-center gap-2.5">
-          <ProgressBar value={progress.ratio} height="sm" animate={false} className="w-20" />
+          <span className="block h-1.5 w-20 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="block h-full rounded-full"
+              style={{ background: 'var(--accent)', width: `${Math.round(progress.ratio * 100)}%` }}
+            />
+          </span>
           <span className="num text-small text-ink-2">{Math.round(progress.ratio * 100)}%</span>
         </span>
       </td>

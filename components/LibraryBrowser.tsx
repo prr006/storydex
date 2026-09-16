@@ -166,7 +166,9 @@ export function LibraryBrowser({
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: DURATION.enter, ease: EASE }}
             >
-              {filters.density === 'grid' && <StoryGrid franchises={shown} />}
+              {filters.density === 'grid' && (
+                <StoryGrid franchises={shown} grouped={!isFiltered && shown.length > 4} />
+              )}
               {filters.density === 'list' && <StoryList franchises={shown} />}
               {filters.density === 'table' && <StoryTable franchises={shown} />}
             </motion.div>

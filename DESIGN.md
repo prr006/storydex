@@ -1,39 +1,46 @@
-# StoryDex — Redesign: “Personal Universe”
+# StoryDex — Redesign: “A Story Is a Route”
 
-**Status: this document supersedes both previous directions — “Midnight Archive” and
-“The Catalogue”. Neither is in force.**
+**Status: this document supersedes every previous direction — “Midnight Archive”, “The
+Catalogue”, and “Personal Universe”. None of them is in force.**
 
-The Catalogue was an editorial index: warm paper, hairlines, a serif voice, artwork as
-small plates inside a ruled list. It read well and it looked like a well-set book — which
-is exactly what was wrong with it. StoryDex is a *library of anime you have lived
-through*, and its artwork should be the loudest thing on the screen.
+Personal Universe was dark, artwork-led and clean, and it still read as *a polished anime
+streaming dashboard*. That was the failure worth naming: hero → rail → rail → grid →
+collection cards is the shape every media product already has. It was technically solid
+and it was generic.
 
-This direction is the inverse: **near-black ground, artwork as the light source, one
-identity accent, and progress drawn as part of the artwork rather than as data beside it.**
+This direction keeps the dark ground and throws away the composition. StoryDex's one real
+idea — **an anime story is not an entry, it is a franchise: seasons, films, specials, OVAs
+and arcs that belong to one continuous story** — becomes the layout language instead of a
+line of copy in the hero.
 
 ---
 
 ## Part 1 — The idea in one line
 
-**Your collection, lit from within.**
+**A story is a route through time, and you are somewhere on it.**
 
-The interface is dark so the artwork can be bright. Everything that isn't artwork —
-navigation, panels, tables — recedes to three steps of near-black. Accents come from two
-places and nowhere else: StoryDex's own indigo for the app's voice, and each story's
-`coverImage.color` for that story's own marks.
+Every surface answers the same four questions in the same order, without a table:
 
-Five seconds on `/dashboard` should produce one reaction: *that is my collection, and I
-can see where I am.*
+| | The device | What it looks like |
+| --- | --- | --- |
+| **STORY** | the jacket | artwork at hero scale, bleeding past its container, with the story's own air behind it |
+| **ENTRIES** | the route | one node per entry, in watch order, connected by a line that is lit behind you and dashed ahead |
+| **PROGRESS** | the light on the line | the line *stops where you stopped*; entry counts sit beside it, never inside a generic bar |
+| **NEXT** | the next node | always named, always artwork-backed, always one action away |
+
+The line is the brand. A crop of any screen shows a lit line with nodes on it and artwork
+beneath — that is `StoryPath`, and it is recognisable without the wordmark.
 
 ### What this is not
 
 | Not this | Because |
 | --- | --- |
-| Netflix clone | No rows of identical tiles under a logo. One story owns the first screen, and the page says *where you are inside it*. |
-| Crunchyroll clone | No seasonal promo slabs, no autoplaying carousel, no "watch now" banners. Nothing moves until the user does. |
-| SaaS dashboard | No KPI cards, no sparklines, no chart furniture. The figures live on the story they describe. |
-| Editorial catalogue | No paper, no serif, no ruled index, no hairlines doing the layout. |
-| Neon/glass showcase | One accent, one shadow, restrained gradients used only where type needs contrast. |
+| Streaming dashboard | No uniform card rails. The stage, the rungs, the horizon and the archive are four different shapes. |
+| Streaming app (Netflix/Crunchyroll) | No promo slabs, no autoplay, no carousel that moves without you. |
+| AniList / MyAnimeList | Those are entry lists. StoryDex's unit is the whole story, drawn as a route. |
+| SaaS dashboard | No KPI cards, no chart furniture. Figures live on the story they describe. |
+| Editorial catalogue | No paper, no serif, no ruled index. That direction is dead. |
+| Generic AI dark UI | Grain, atmosphere derived from real artwork, giant era numerals, poster-scale titles — none of which is a default. |
 
 ---
 
@@ -41,270 +48,189 @@ can see where I am.*
 
 ### 2.1 Colour
 
-A single deliberate dark theme. Three surface steps, each visibly different from the last,
-and a light rim instead of grey borders so panels read as lit rather than drawn.
+One deliberate dark theme. Canvas is `#08090c`; three surface steps sit on top of it and a
+light rim (`rgb(255 255 255 / .07)`, `.13` strong) replaces grey borders, so panels read as
+lit rather than drawn.
 
-```
-canvas      #08090C   the page
-surface     #0E1015   panels, cards, tables
-surface-2   #14171D   inputs, secondary panels
-surface-3   #1B1F27   wells, placeholders
-ink         #F3F5F9   primary text
-ink-2       #A8B0C0   secondary
-ink-3       #6D7583   metadata
-line        rgb(255 255 255 / .07)     hairlines
-line-strong rgb(255 255 255 / .13)     card edges, dividers
-brand       #6D5CFF   StoryDex's voice: nav, primary actions, links
-brand-soft  rgb(109 92 255 / .16)      active nav wash, brand chips
-```
+Two accent systems, never mixed:
 
-**Story states** — six, used identically on every screen and at every scale:
+* **StoryDex indigo** (`#6d5cff`, strong `#9d91ff`) — navigation, primary actions, focus.
+  This is the product's voice.
+* **Story accents** — each story's own `coverImage.color`, applied through
+  `accentVars()` as `--accent`, `--accent-strong`, `--accent-soft`. Used for that story's
+  progress line, nodes, milestone borders, atmosphere. Never for important text: where a
+  story accent carries a label, the label sits on the ground, not on the accent.
 
-| State | Colour | Meaning |
-| --- | --- | --- |
-| Completed | `#3DDC97` emerald | watched, earned |
-| Watching | `#7B6BFF` indigo (or the story's accent) | you are here |
-| Planned | `#63A4FF` blue | on the list, not started |
-| Upcoming | `#F0B429` amber | announced, not aired |
-| On hold | `#8B93A3` grey | set down |
-| Stopped | `#F2707F` red | walked away from |
-
-**Artwork-driven accents.** `accentVars(story)` in `lib/design.ts` returns
-`--accent`, `--accent-strong` and `--accent-soft` from the story's own
-`coverImage.color` — so a progress bar, a timeline node, a collection card's edge and its
-percentage all belong to *that* story. Two guard rails keep it from becoming a rainbow:
-
-- near-black and near-white cover colours are rejected (they'd be invisible or blinding),
-  as are near-greys, and fall back to StoryDex indigo;
-- the accent is used for **fill and borders only**, never for small text on dark, because
-  its contrast cannot be guaranteed. Text stays on the ink ramp.
+States are semantic and identical everywhere: watched emerald `#3ddc97`, watching indigo
+`#7b6bff`, planned/caught-up `#63a4ff`, not aired amber `#f0b429`, on hold `#8b93a3`,
+stopped `#f2707f`. A state colour never changes meaning between screens.
 
 ### 2.2 Typography
 
-One family, used with conviction: **Instrument Sans**, 400/500 for interface, 600/700 for
-titles with `-0.02em`-to-`-0.035em` tracking. No serif anywhere. Hierarchy comes from
-scale, weight and colour.
+One family — **Instrument Sans** — used with conviction across four registers:
 
-```
-micro    11px   uppercase, +0.1em    eyebrows, ~one per section
-small    13px   metadata, table headers
-body     14.5px body copy
-card     15px   card titles (600)
-lead     17px   hero subtitles, empty-state leads
-title    22px   popovers, panel headings
-head     28px   section titles
-display  clamp(36px, 4.6vw, 56px)    page titles
-hero     clamp(40px, 6vw, 76px)      one per screen — dashboard hero, story hero
-```
+* *poster scale* (`--text-mega`, up to 8rem): the story you are inside, on the stage and
+  the story hero. This is the loudest thing in the product.
+* *era scale* (`--text-era`, up to 6rem): years on the journey map and on the horizon, set
+  dim (`white/13`) so they read as architecture, not as text.
+* *headings* (`--text-display` → `--text-head` → `--text-card`): section and object titles.
+* *utility* (`--text-small`, 13px): metadata, counts, table headers, always with
+  `font-variant-numeric: tabular-nums` via `.num`. Small text exists, but nothing
+  important is small.
 
-### 2.3 Space, shape, depth
+### 2.3 Depth and composition
 
-- Gutter `clamp(20px, 4vw, 48px)`, content max **1440px** — wide, because artwork needs room.
-- Radii 8 / 10 / 14 / 20px. Poster art gets 10px; heroes and collection cards 20px.
-   Nothing is pill-shaped except controls that should be.
-- **Exactly two shadows**, both for artwork: `card-shadow` (resting) and `lift` (hover).
-  No glow, no blur outside the two sticky surfaces that genuinely overlay content.
-- Gradients exist for one reason: letting type sit on artwork. `scrim-hero` (left vignette
-  + bottom fade), `scrim-card` (bottom fade), `scrim-bottom`. They are never decorative.
+Five layers, in this order, and artwork is allowed to cross between them:
+
+1. background atmosphere — `Atmosphere`, drifting radial washes in the story's accent
+2. artwork — hero jackets, bleeding images (`bleed-soft`, mask-faded edges), grain
+3. content — floating panels (`float-panel`), facts as pill rows on the artwork
+4. controls — the route, the switcher, the record table
+5. foreground action — one loud button per screen
+
+Artwork escapes its container by design: `bleed-soft` dissolves an edge into the page, the
+stage offsets a second copy of the artwork against the first, and the hero's "you are here"
+panel straddles the hero's bottom edge so the page reads as continuous rather than stacked.
+Not everything is a rounded rectangle, and the things that are, are quiet.
 
 ### 2.4 Motion
 
-Framer Motion, tuned to feel expensive rather than busy:
+Intentional, slow-ish, never noisy:
 
-- sections and cards enter with an 8–14px rise, 300–420ms, staggered 30–50ms;
-- artwork scales to 1.06 over 420ms inside its own box on hover, and cards lift 4px;
-- progress bars fill once, 500–700ms, and never re-animate;
-- the hero has no parallax and no autoplay — a collection should sit still;
-- `MotionConfig reducedMotion="user"` plus a global `prefers-reduced-motion` block.
+* the journey's spine lights only as far as you have walked, and re-lights as the map is
+  scrolled
+* milestone cards lift 4px on hover with a 900ms artwork scale inside a fixed frame
+* story stage cross-fades between stories; artwork drifts (`drift`, 42s) in the atmosphere
+* progress fills animate once, on entry (`0.7s`, `cubic-bezier(.22,1,.36,1)`)
+* every list staggers at ≤0.06s per item, capped at 0.3s so nothing feels queued
 
----
-
-## Part 3 — Routes, and what each one is for
-
-| Route | Job | Signature element |
-| --- | --- | --- |
-| `/` Welcome | first visit: what StoryDex does + import. Returning: the story you left | the same hero, for a different reason |
-| `/dashboard` | *where am I, and what's next* | artwork hero, continue rail, up-next queue |
-| `/library` | *what do I own* | poster grid + one toolbar |
-| `/franchises` | *what shape is each story* | collection cards with the entry stack |
-| `/discover` | *what's out there, versus what I own* | featured title + ranked trending |
-| `/franchise/[id]` | *this story, whole* | hero → ledger → **story timeline** → table → continue |
-
-### 3.1 `/dashboard`
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ ▣ STORYDEX   Home  Library  Discover  Franchises   [search]  ◉ Kenji  │
-├──────────────────────────────────────────────────────────────────────┤
-│                                  ┌────────────────────┐              │
-│  CONTINUE WATCHING               │  CURRENTLY WATCHING │              │
-│  Bleach                          │  The Conflict       │              │
-│  2004–2026                       │  Court III · 2024   │              │
-│  The Conflict · TV · 2024        │  Episode 9 of 14    │              │
-│  Episode 9 of 14      64% watched│  ▮▮▮▮▮▮▮▯▯▯  64%    │              │
-│  ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮           │  [▶ Resume episode 9]│              │
-│  [▶ Continue — TV 9/14] [+ The whole story]  4/6 · 402 of 420 eps     │
-├──────────────────────────────────────────────────────────────────────┤
-│  Continue watching  3 stories in progress                      See all │
-│  [ 16:9 artwork card ] [ 16:9 artwork card ] [ 16:9 artwork card ] →   │
-├──────────────────────────────────────────────────────────────────────┤
-│  Up next   Queued, paused and not yet aired                           │
-│  [ compact plate ][ compact plate ][ compact plate ] →                │
-├──────────────────────────────────────────────────────────────────────┤
-│  Your library   8 stories                            Browse all →     │
-│  ▢ ▢ ▢ ▢ ▢ ▢ ▢   (2:3 posters, status chip, progress at the foot)     │
-├──────────────────────────────────────────────────────────────────────┤
-│  Franchises   Stories grouped across seasons, films and specials      │
-│  [ banner + entry stack ][ banner + entry stack ][ banner + stack ]   │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-Deliberate choices:
-
-- **The hero is the story, not a heading.** There is no "You're 4 entries into…" sentence
-  above the fold; the story's own artwork, its current entry and its episode bar *are*
-  the greeting.
-- **Hero → ledger → rail** is a single downward read: this story, then every other story.
-- **Up next is visually lighter than Continue** — it is a queue, not a shelf.
-- **Statistics never float.** Entry counts ride on the hero, the segment bar and the
-  ledger rows; there is no free-standing KPI block anywhere in the product.
-
-### 3.2 `/franchise/[id]`
-
-```
-┌─ Hero ───────────────────────────────────────────────────────────────┐
-│  [ real AniList banner, or the cover standing in the same slot ]      │
-│  CONTINUE WATCHING            ┌──────────────────────┐               │
-│  Bleach                       │ CURRENTLY WATCHING    │               │
-│  The Conflict · TV · 2024     │ The Conflict          │               │
-│  Episode 9 of 14  64% watched │ Episode 9 of 14 64%   │               │
-│  ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮         │ [▶ Resume episode 9]  │               │
-│  [▶ Continue] [+ The whole story]  4/6 · 402/420 · Action Supernatural │
-├─ Ledger ─────────────────────────────────────────────────────────────┤
-│  ◯ 96%        │ Episode ledger        402 watched · 18 remaining     │
-│  4 of 6       │ ▬▬▬▬▬▬▬ 2004   ▬ 2022  ▬ 2023  ▬▬ 2024  ▬ 2026      │
-├─ Story timeline ─────────────────────────────────────────────────────┤
-│  2004      2004      2022      2023      2024      2026              │
-│  ●━━━━━━━━ ●━━━━━━━━ ●━━━━━━━━ ●━━━━━━━━ ●━━━━━━━━ ◯                 │
-│  [art]     [art]     [art]     [art]     [art]     [art]             │
-├─ All entries ────────────────────────────────────────────────────────┤
-│  dark table: entry · format · year · episodes · status · score · bar  │
-├─ Continue the story ─────────────────────────────────────────────────┤
-│  [ artwork ] The Conflict — Court III · Episode 10 of 14   [▶ Watch]  │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-### 3.3 The story timeline (the signature view)
-
-One horizontal rail, one stop per entry, in watch order:
-
-- the **era** (year) is set large and dim above each stop, so the 18-year gap between 2004
-  and 2022 is *felt* rather than read;
-- a **connecting rail** with a node per entry: completed = filled emerald with a check,
-  watching = indigo/accent node with a 4px halo (the single strongest mark on the page),
-  upcoming = hollow amber, planned = hollow blue, stopped = red bar;
-- each stop is a **16:9 artwork card** with the entry's own cover, its format tag, its
-  episode line and a progress bar in the story's accent;
-- the **current entry's card takes the accent border** and the accent halo — nothing else
-  on the page uses that colour;
-- it scrolls sideways rather than wrapping, because a story has an order and a wrapped
-  grid destroys it.
-
-### 3.4 The library and its three densities
-
-Toolbar: search · status segmented control · format/genre/sort dropdowns · density
-toggle. All of it is small, and the counts ride on the options.
-
-| Density | Use | Cell |
-| --- | --- | --- |
-| **Grid** (default) | scanning by artwork | 2:3 poster, status chip for *stated* states only, progress bar at the foot, two lines of text |
-| **List** | scanning by progress | 124×72 plate, title, next entry, full-width bar |
-| **Table** | comparing many | dark panel, artwork kept, columns for entries/episodes/status/next/score |
-
-A poster shows its status chip only when the chip says something the progress bar can't
-(completed, upcoming, stopped). Everything else stays clean — that restraint is what makes
-the grid feel premium instead of noisy.
-
-### 3.5 `/franchises`
-
-Collection cards: a 21:9 banner of the story's widest real artwork, the covers of its first
-four entries stacked and overlapping the banner's bottom edge, then title, genres, status
-chip, segment bar, percentage, and `N entries · N eps · N watched`. A six-entry saga and a
-single film are different shapes before you read a word. Grouped by lifecycle:
-In progress → Caught up → Completed → On hold → Not started → Planned → Stopped.
-
-### 3.6 `/discover`
-
-One featured title owns the screen (artwork-led, with a real average score and popularity),
-then **Trending** as a ranked carousel where the rank numeral is drawn into the card,
-**This season** as a poster grid, **Upcoming** as compact artwork cards, and
-**Recommended from your library** — rows that state their reason ("Because you completed
-Bleach — both are Action"), drawn from the user's own data, never invented.
+`prefers-reduced-motion` stops the drift and the stagger-based entrances. Nothing moves
+on its own, and nothing loops except the atmosphere.
 
 ---
 
-## Part 4 — Component map
+## Part 3 — The surfaces
 
-| Component | Role |
+### 3.1 `/dashboard` — Home
+
+Five movements, each a different shape. This is the whole point of the redesign:
+
+1. **The stage** — one story owns the first screen: artwork twice-layered, the story's air
+   behind it, the title at poster scale with a giant dim initial as architecture, the route
+   across the whole story, the current entry and the next entry named, and a switcher strip
+   at the bottom whose tabs each carry their own mini-route. It cross-fades; it never
+   auto-advances.
+2. **Part-way through** — the ladder. One full-width rung per remaining active story:
+   artwork bleeding out of the left column, facts floating in the middle, the route running
+   underneath, next-entry and one action on the right.
+3. **Up next** — two honest halves. *Ready when you are*: rows for stories you could start
+   or restart, artwork bleeding in from the left edge. *Not aired yet*: entries that do not
+   exist yet, arranged under giant dim year numerals, because there a year is genuinely a
+   date in the future.
+4. **Your archive** — story objects: covers of the entries fanned along the foot of the
+   artwork, the route drawn across it, then title, years, size, progress.
+5. **Stories with depth** — the same objects at feature scale for multi-entry franchises.
+
+Continue Watching is preserved: it *is* the stage, and every rung carries a resume action.
+
+### 3.2 `/franchise/[id]` — inside a story
+
+A descent, not a record: **hero → deck → journey → record → onward**.
+
+* Hero: full-bleed artwork with a faded second copy for depth, the title at poster scale,
+  the story's facts as floating pills, the route across the whole story, and the "you are
+  here" panel overlapping the hero's bottom edge. Entering a story should feel like entering
+  something.
+* Deck: the completion ring, entry and episode arithmetic, and the **episode ledger** — one
+  bar per entry whose *length is that entry's real episode count*, so the mass of a story is
+  visible (a 1,000-episode run next to a single special).
+* Journey: `StoryMap` — the era markers, the lit spine, staggered milestones, "you are
+  here", and a compressed route index at the top that scrolls the map to any entry.
+* Record: the dense entry table, kept subordinate, now carrying each entry's position in the
+  story.
+* Onward: `ContinueStory` names exactly what to watch next, or says the story is finished.
+
+### 3.3 `StoryMap` — the signature
+
+A journey through time, not a vertical list with a line and cards:
+
+* a single continuous spine; **lit** behind you in the story's own colour, **dashed** ahead
+* giant dim year numerals as era markers, with real gaps named between them — "8 years
+  later" is part of the story
+* milestones staggered above and below the spine, so the eye travels; **the one you are on
+  sits centred and alone**, which is how "here" reads instantly
+* each milestone: 16:9 artwork, state chip, entry episode position, and its own progress fill
+* the current milestone is the only one with an action, and it says *You are here — episode
+  366 of 1,000*
+* a compressed route at the top: every entry as a stop, hover to name it, press to travel
+
+### 3.4 `/library` — the archive
+
+Practical, artwork-heavy, and organised like a shelf you keep: **grouped by where you stand**
+(inside right now → caught up → on hold → not started → planned → completed → set aside),
+each shelf introduced by a word, a count and a rule to the edge of the page. Grouping appears
+once a library is big enough to need it, and disappears the moment you filter or search.
+
+Three densities, all in the same language: **archive** (story objects, grouped), **list**
+(plates with artwork bleeding right and the route underneath), **table** (dense comparison,
+artwork still present). Search, filters, sorting and URL state are untouched.
+
+### 3.5 `/franchises` — the franchise as an object
+
+The single-story-entry problem, solved physically. Each shelf has its own shape:
+
+* **In progress** — large story objects, covers fanned along the foot
+* **Caught up / Completed** — a **shelf of spines**: upright, thin, pressed together,
+  labelled along the spine, with a lit foot showing how much is walked, and a hover that
+  pulls the spine out. Finished stories stop being posters you already know and become books
+  you own. Spine width is derived from the story's real entry count, so a long saga is
+  physically thicker.
+* **Not started / Planned / On hold / Set aside** — rows: quieter, smaller, no artwork
+  wasted on a story with nothing to show yet.
+
+### 3.6 `/discover` — exploration
+
+Numbered like a contents page (01–04), with a different rhythm per section so no two read
+alike: a full-height featured hero; a ranked trending strip; a season **wall** with one wide
+lead panel; an upcoming **schedule** grouped under giant dim year numerals; and
+recommendations drawn from your own library, each one saying *why*. Live AniList data only —
+if the API is unreachable the page says so rather than inventing covers.
+
+---
+
+## Part 4 — Primitives
+
+| Component | Owns |
 | --- | --- |
-| `AppShell` | one client boundary: masthead, library context, import dialogue, reduced-motion config |
-| `Masthead` | monogram + wordmark, four destinations, ⌘K search, account popover, mobile sheet |
-| `SettingsMenu` | account, re-import, storage disclosure, clear data |
-| `Cover` / `ArtworkBackdrop` | the only artwork primitives. Real URL or designed monogram; tints and scrims; a poster standing in for a missing banner, never a generated image |
-| `Bars`: `ProgressBar` `SegmentBar` `Ring` `LedgerRow` | progress as a first-class visual, all reading `var(--accent)` |
-| `StatusMark` / `StatusChip` / `StatusDot` | six states, one vocabulary, at every scale |
-| `Cards`: `MediaCard` `PosterCard` `StoryCollectionCard` | the three card objects |
-| `UpNextRail` / `UpNextCard` | the queue, and the rule for what belongs in it |
-| `Rail` / `RailSection` | the sideways scroller and its titled section, with real controls |
-| `StoryHero` | the dashboard/story hero: artwork, current entry, bar, one action |
-| `StoryLedger` | ring, episode ledger sized by episode count, currently-watching panel |
-| `StoryMap` | **the story timeline** |
-| `EntriesTable` | dense reference table in the dark system |
-| `ContinueStory` | the closing banner that names the next episode |
-| `LibraryBrowser` / `LibraryControls` / `StoryViews` | toolbar + three densities |
-| `DiscoverBoard` | featured, ranked trending, season, upcoming, recommendations |
-| `EmptyLibrary` | designed empty state with live AniList covers |
-| `ImportDialog` | the AniList import flow |
-
-**Deleted in this pass** (they belonged to the previous composition):
-`Chapter`, `Statement`, `ContinueRow`, `UpNextTable`, `EntryRuler`, `EntryTimeline`,
-`EntryTable`, `NextActionBar`, `CollectionSection`, `StoryCard`.
+| `Cover` | every image: ratio, tint derived from the artwork, scrim, hover scale. `ArtworkBackdrop` for full-bleed fields |
+| `Atmosphere` / `ArtworkAura` / `Vignette` | the "this story has its own air" layer, always behind content |
+| `Path` (`StoryPath`) | the route at three sizes — `spark` in tables, `rail` in rungs and decks, `journey` for the map |
+| `StoryStage` | Home's opening; `nextEntryAfter()` |
+| `StoryLadder` | the full-width rung |
+| `Horizon` | ready rows + not-aired eras |
+| `StoryObject` / `StoryRowObject` | the franchise as a visual object, card/feature/row |
+| `StorySpines` | the shelf of finished stories |
+| `StoryHero`, `StoryLedger`, `StoryMap`, `EntriesTable`, `ContinueStory` | the story page, top to bottom |
+| `StoryViews` | archive / list / table densities |
+| `Bars` | `ProgressBar` and `Ring` — entries and completion, nothing else |
+| `StatusMark` | chips, dots, marks in state colours |
+| `lib/queue.ts` | the queue and the announced list — logic, so three surfaces agree |
 
 ### Data (unchanged)
 
-`storydex:library:v1` and `{username, importedAt, franchises}` still load as-is.
-`lib/franchise.ts`, `lib/storage.ts`, `lib/useLibrary.ts`, `lib/summaries.ts` keep their
-contracts. `lib/anilist.ts` gains `averageScore`/`popularity` on the shared media fields
-and the Discover boards query — additive only, same endpoint and same POST path.
-`lib/libraryView.ts` keeps facet/sort/density state. No business logic was rewritten, and
-no mock data exists anywhere in the app.
+`lib/anilist.ts` (AniList GraphQL), `lib/franchise.ts` (relation-based grouping),
+`lib/storage.ts` (`storydex:library:v1`), `lib/summaries.ts`, `lib/libraryView.ts` (URL
+state), `lib/design.ts` (status, phase, progress, accent helpers). No mock data, no bundled
+artwork, no hardcoded demo library: every franchise, cover, banner and colour comes from the
+user's own AniList import.
 
 ---
 
-## Part 5 — Artwork policy
+## Part 5 — Verification
 
-- Every image is an AniList CDN URL that arrived through the API. `isRemoteArtwork()`
-  gates it: anything that isn't an absolute http(s) URL counts as *no artwork*.
-- A story's widest real image is used for its hero: `bannerImage` when AniList has one,
-  its cover otherwise — cropped wide and focused on the upper third where a poster's
-  subject sits. Nothing is generated, blended or upscaled into existence.
-- `coverImage.color` drives the tint bed behind a loading image and the story's accent.
-- Stories with no artwork get a designed monogram plate, not a broken image.
-
----
-
-## Part 6 — Verification
-
-Because the sandbox has no route to `graphql.anilist.co`, the build is checked three ways:
-
-1. **A throwaway harness** that replays a real AniList list payload (same field shape, same
-   CDN URL shape, real media ids, titles and cover colours) through the *actual*
-   `groupFranchises` implementation — 8 stories covering a 6-entry franchise mid-run, a
-   caught-up story with a 2026 film, a finished story, a 1,122-episode series, a stopped
-   story, a planned story and a bare film. Every route was then fetched and inspected in
-   the server-rendered HTML: real CDN URLs, correct counts, the hero's episode line, the
-   timeline's eras and states, all three densities, and the designed empty state. The
-   harness is deleted before commit.
-2. **`npm run verify:anilist -- <username>`** — the real fetch → group → render path
-   against a live list.
-3. **`npx tsc --noEmit` + `npx next build`** on every change.
+Per stage: `npx tsc --noEmit`, `rm -rf .next && npx next build`, then the served HTML and CSS
+are checked for the real strings each surface must produce — stage title, "You are here",
+era markers, ledger figures, next-entry names, table rows — against a temporary fixture
+injected into `lib/useLibrary.ts` and removed before commit, so the app itself ships empty
+until the user imports. Empty states, all seven routes, and the 404 are checked on every
+build.

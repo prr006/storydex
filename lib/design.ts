@@ -497,3 +497,34 @@ export function episodeLabel(entry: Season): string {
   if (total === 1) return getEntryStatus(entry) === 'watched' ? 'Film · watched' : 'Film'
   return `Episode ${watched} of ${total}`
 }
+
+/**
+ * The entry the user is inside right now, or the next one they could open.
+ *
+ * Lives here rather than in a card component because every surface needs it:
+ * the stage, the hero, the ladder, the map.
+ */
+export function currentEntry(franchise: Franchise): Season | null {
+  const watching = franchise.seasons.find((entry) => getEntryStatus(entry) === 'watching')
+  return watching ?? getNextEntry(franchise)
+}
+
+/** A story phase expressed in the entry-status vocabulary, so chips match. */
+export function phaseToStatus(phase: StoryPhase): EntryStatus {
+  switch (phase) {
+    case 'complete':
+      return 'watched'
+    case 'watching':
+      return 'watching'
+    case 'caught-up':
+      return 'planned'
+    case 'dropped':
+      return 'dropped'
+    case 'paused':
+      return 'paused'
+    case 'planned':
+      return 'planned'
+    default:
+      return 'unwatched'
+  }
+}

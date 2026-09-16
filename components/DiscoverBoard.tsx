@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Plus, Play, Sparkles } from 'lucide-react'
 import { ArtworkBackdrop, Cover, FormatMark } from '@/components/Cover'
-import { Rail, RailSection } from '@/components/Rail'
+import { Rail } from '@/components/Rail'
 import {
   accentVars,
   getStoryPhase,
@@ -26,10 +26,14 @@ import { EASE } from '@/lib/motion'
    Exploring anime rather than searching a database. Four boards, one request:
 
      featured     one title given the whole screen, artwork-led
-     trending     ranked — the number is drawn into the composition
-     season       what's airing now
-     upcoming     more compact, because nothing is watchable yet
-     recommended  drawn from *your* library, and it says why
+     trending     a ranked strip — the number is drawn into the composition
+     season       a wall with one lead panel, then posters
+     upcoming     a schedule, grouped by year, not another carousel
+     recommended  your own library read back to you, with reasons
+
+   Sections are numbered like a contents page and each one is laid out
+   differently, because exploration should feel like moving through different
+   rooms rather than scrolling the same shelf five times.
 
    Everything comes from the same public AniList API the import reads. If the
    request fails the page says so plainly instead of inventing covers.
@@ -102,12 +106,9 @@ export function DiscoverBoard({ franchises }: { franchises: Franchise[] }) {
     <div className="pb-24">
       {featured && <Featured media={featured} franchise={owned.get(featured.id)} />}
 
-      <div className="shell mt-14 space-y-16">
-        <RailSection
-          title="Trending now"
-          meta="What the community is watching"
-          className="-mt-2"
-        >
+      <div className="shell mt-16 space-y-20">
+        <Board index={1} title="Trending now" note="What the community is watching">
+
           <Rail itemWidth={200}>
             {boards.trending.map((media, index) => (
               <RankedCard
@@ -119,40 +120,41 @@ export function DiscoverBoard({ franchises }: { franchises: Franchise[] }) {
               />
             ))}
           </Rail>
-        </RailSection>
+        </Board>
 
         {boards.seasonal.length > 0 && (
-          <RailSection
+          <Board
+            index={2}
             title="This season"
-            meta={`${SEASON_LABEL[boards.season]} ${boards.seasonYear} simulcasts`}
+            note={`${SEASON_LABEL[boards.season]} ${boards.seasonYear} simulcasts`}
           >
-            <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+            {/* A wall, not a row: one wide lead panel carries the season, then
+                the rest of the slate in posters beside and beneath it. */}
+            <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6">
               {boards.seasonal.map((media, index) => (
                 <DiscoverTile
                   key={media.id}
                   media={media}
                   franchise={owned.get(media.id)}
                   index={index}
+                  lead={index === 0}
                 />
               ))}
             </div>
-          </RailSection>
+          </Board>
         )}
 
         {boards.upcoming.length > 0 && (
-          <RailSection title="Upcoming" meta="Announced, nothing to watch yet">
-            <Rail itemWidth={300}>
-              {boards.upcoming.map((media, index) => (
-                <UpcomingCard key={media.id} media={media} index={index} />
-              ))}
-            </Rail>
-          </RailSection>
+          <Board index={3} title="Upcoming" note="Announced, nothing to watch yet">
+            <UpcomingLedger items={boards.upcoming} />
+          </Board>
         )}
 
         {recommendations.length > 0 && (
-          <RailSection
+          <Board
+            index={4}
             title="Recommended from your library"
-            meta={`Based on ${franchises.length} tracked ${franchises.length === 1 ? 'story' : 'stories'}`}
+            note={`Based on ${franchises.length} tracked ${franchises.length === 1 ? 'story' : 'stories'}`}
             action={{ href: '/library', label: 'Browse yours' }}
           >
             <div className="grid gap-4 lg:grid-cols-2">
@@ -160,10 +162,58 @@ export function DiscoverBoard({ franchises }: { franchises: Franchise[] }) {
                 <RecommendationRow key={item.key} item={item} index={index} />
               ))}
             </div>
-          </RailSection>
+          </Board>
         )}
       </div>
     </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Board — one numbered room of the page                                      */
+/* -------------------------------------------------------------------------- */
+
+function Board({
+  index,
+  title,
+  note,
+  action,
+  children,
+}: {
+  index: number
+  title: string
+  note: string
+  action?: { href: string; label: string }
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div className="flex items-start gap-5">
+        <span
+          aria-hidden
+          className="num shrink-0 text-[3.25rem] font-bold leading-none tracking-[-0.05em] text-white/[0.11]"
+        >
+          {String(index).padStart(2, '0')}
+        </span>
+        <div className="min-w-0 flex-1 pt-1">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+            <h2 className="text-head font-bold text-ink">{title}</h2>
+            {action && (
+              <Link
+                href={action.href}
+                className="text-small font-medium text-ink-2 transition-colors hover:text-ink"
+              >
+                {action.label} →
+              </Link>
+            )}
+          </div>
+          <p className="mt-1.5 text-small text-ink-3">{note}</p>
+          <span className="mt-4 block h-px bg-line" aria-hidden />
+        </div>
+      </div>
+
+      <div className="mt-6">{children}</div>
+    </section>
   )
 }
 
@@ -188,7 +238,7 @@ function Featured({ media, franchise }: { media: AniListMedia; franchise?: Franc
         tint={media.coverImage?.color}
         isBanner={Boolean(media.bannerImage)}
         priority
-        className="h-[clamp(20rem,50vh,34rem)] w-full"
+        className="h-[clamp(24rem,62vh,42rem)] w-full"
         overlay="scrim-hero"
         sizes="100vw"
       />
@@ -206,7 +256,9 @@ function Featured({ media, franchise }: { media: AniListMedia; franchise?: Franc
               {media.status === 'RELEASING' ? 'Airing this season' : 'Highest rated this week'}
             </p>
 
-            <h1 className="mt-3 text-hero font-bold text-ink">{title}</h1>
+            <h1 className="mt-4 text-display font-bold text-ink drop-shadow-[0_8px_40px_rgba(0,0,0,0.7)]">
+              {title}
+            </h1>
 
             <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-body text-ink-2">
               {media.format && <FormatMark format={media.format} />}
@@ -348,63 +400,24 @@ function DiscoverTile({
   media,
   franchise,
   index,
+  lead = false,
 }: {
   media: AniListMedia
   franchise?: Franchise
   index: number
+  /** The season's lead panel: wide, banner-shaped, artwork with text on it. */
+  lead?: boolean
 }) {
-  const title = media.title.english ?? media.title.romaji ?? media.title.native ?? 'Untitled'
-  const year = media.seasonYear ?? media.startDate?.year ?? null
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, delay: Math.min(index * 0.03, 0.24), ease: EASE }}
-      className="group/art"
-      style={accentVars({ id: String(media.id), accentColor: media.coverImage?.color })}
-    >
-      <a
-        href={media.siteUrl ?? `https://anilist.co/anime/${media.id}`}
-        target="_blank"
-        rel="noreferrer"
-        className="block"
-      >
-        <Cover
-          src={media.coverImage?.extraLarge ?? media.coverImage?.large}
-          alt={title}
-          tint={media.coverImage?.color}
-          ratio="2/3"
-          hoverZoom
-          focus="upper"
-          sizes="(max-width: 640px) 30vw, 15vw"
-          className="transition-all duration-300 ease-out group-hover/art:-translate-y-1 group-hover/art:ring-1 group-hover/art:ring-white/25"
-        >
-          {franchise && (
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-brand" aria-hidden />
-          )}
-        </Cover>
-
-        <h3 className="clamp-2 mt-2.5 text-small font-semibold leading-snug text-ink">{title}</h3>
-        <p className="num mt-0.5 truncate text-[0.6875rem] text-ink-3">
-          {franchise ? 'In your library' : year ? `${year} · Season` : 'Season'}
-        </p>
-      </a>
-    </motion.article>
-  )
-}
-
-function UpcomingCard({ media, index }: { media: AniListMedia; index: number }) {
   const title = media.title.english ?? media.title.romaji ?? media.title.native ?? 'Untitled'
   const year = media.seasonYear ?? media.startDate?.year ?? null
   const art = media.bannerImage ?? media.coverImage?.extraLarge ?? media.coverImage?.large
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, delay: Math.min(index * 0.04, 0.2), ease: EASE }}
-      className="group/art w-[288px] shrink-0 snap-start"
+      transition={{ duration: 0.34, delay: Math.min(index * 0.03, 0.24), ease: EASE }}
+      className={lead ? 'group/art col-span-3 sm:col-span-2 lg:col-span-2' : 'group/art'}
       style={accentVars({ id: String(media.id), accentColor: media.coverImage?.color })}
     >
       <a
@@ -413,40 +426,149 @@ function UpcomingCard({ media, index }: { media: AniListMedia; index: number }) 
         rel="noreferrer"
         className="block"
       >
-        <div className="relative h-[104px] overflow-hidden rounded-md transition-all duration-300 ease-out group-hover/art:-translate-y-0.5 group-hover/art:ring-1 group-hover/art:ring-white/20">
+        {lead ? (
+          <span className="relative block aspect-[16/9] overflow-hidden rounded-md art-edge transition-transform duration-300 ease-out group-hover/art:-translate-y-1">
+            <Cover
+              src={art}
+              alt=""
+              tint={media.coverImage?.color}
+              isBanner={Boolean(media.bannerImage)}
+              ratio="16/9"
+              scrim="card"
+              hoverZoom
+              edged={false}
+              rounded={false}
+              focus={media.bannerImage ? 'center' : 'upper'}
+              sizes="(max-width: 640px) 92vw, 30vw"
+              className="absolute inset-0 h-full w-full"
+            />
+            <span className="relative flex h-full flex-col justify-end p-4">
+              <span className="clamp-2 text-lead font-bold leading-tight text-white">{title}</span>
+              <span className="num mt-1.5 text-small text-white/70">
+                {media.format?.replace('_', ' ') ?? 'Anime'}
+                {media.episodes ? ` · ${media.episodes} eps` : ''}
+                {franchise ? ' · in your library' : year ? ` · ${year}` : ''}
+              </span>
+            </span>
+            {franchise && (
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-brand" aria-hidden />
+            )}
+          </span>
+        ) : (
+          <>
+            <Cover
+              src={art}
+              alt={title}
+              tint={media.coverImage?.color}
+              ratio="2/3"
+              hoverZoom
+              focus="upper"
+              sizes="(max-width: 640px) 30vw, 15vw"
+              className="transition-all duration-300 ease-out group-hover/art:-translate-y-1 group-hover/art:ring-1 group-hover/art:ring-white/25"
+            >
+              {franchise && (
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-brand" aria-hidden />
+              )}
+            </Cover>
+
+            <h3 className="clamp-2 mt-2.5 text-small font-semibold leading-snug text-ink">{title}</h3>
+            <p className="num mt-0.5 truncate text-[0.6875rem] text-ink-3">
+              {franchise ? 'In your library' : year ? `${year} · Season` : 'Season'}
+            </p>
+          </>
+        )}
+      </a>
+    </motion.article>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Upcoming — a schedule, grouped by year                                     */
+/* -------------------------------------------------------------------------- */
+
+function UpcomingLedger({ items }: { items: AniListMedia[] }) {
+  const groups = new Map<number, AniListMedia[]>()
+  for (const media of items) {
+    const year = media.seasonYear ?? media.startDate?.year ?? 0
+    const bucket = groups.get(year)
+    if (bucket) bucket.push(media)
+    else groups.set(year, [media])
+  }
+
+  const ordered = [...groups.entries()].sort((a, b) => {
+    if (a[0] === 0) return 1
+    if (b[0] === 0) return -1
+    return a[0] - b[0]
+  })
+
+  return (
+    <div className="space-y-10">
+      {ordered.map(([year, list], groupIndex) => (
+        <motion.div
+          key={year || 'undated'}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: Math.min(groupIndex * 0.06, 0.24), ease: EASE }}
+          className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 lg:grid-cols-[11rem_minmax(0,1fr)]"
+        >
+          {/* The same era device the story map uses: a numeral big enough to
+              read as time rather than as data. */}
+          <div className="flex items-baseline gap-2 sm:flex-col sm:items-start sm:gap-1">
+            <span className="text-era font-bold text-white/[0.13]">{year || '—'}</span>
+            <span className="text-small text-ink-3">
+              {year ? `${list.length} announced` : 'No date announced'}
+            </span>
+          </div>
+
+          <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((media, index) => (
+              <UpcomingRow key={media.id} media={media} index={index} />
+            ))}
+          </ul>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+function UpcomingRow({ media, index }: { media: AniListMedia; index: number }) {
+  const title = media.title.english ?? media.title.romaji ?? media.title.native ?? 'Untitled'
+  const art = media.coverImage?.extraLarge ?? media.coverImage?.large
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.18), ease: EASE }}
+      style={accentVars({ id: String(media.id), accentColor: media.coverImage?.color })}
+    >
+      <a
+        href={media.siteUrl ?? `https://anilist.co/anime/${media.id}`}
+        target="_blank"
+        rel="noreferrer"
+        className="group/art flex items-center gap-3 rounded-sm py-1.5 transition-colors hover:bg-white/[0.03]"
+      >
+        <span className="relative block h-[60px] w-[44px] shrink-0 overflow-hidden rounded-xs art-edge">
           <Cover
             src={art}
             alt=""
             tint={media.coverImage?.color}
-            isBanner={Boolean(media.bannerImage)}
-            ratio="16/9"
-            scrim="card"
-            hoverZoom
+            ratio="2/3"
             edged={false}
             rounded={false}
-            focus={media.bannerImage ? 'center' : 'upper'}
-            sizes="290px"
-            className="absolute inset-0 h-full w-full"
+            sizes="44px"
+            className="h-full w-full opacity-90 transition-opacity duration-300 group-hover/art:opacity-100"
           />
-
-          <div className="relative flex h-full flex-col justify-between p-3">
-            <span
-              className="self-start rounded-full px-2 py-[3px] text-[0.625rem] font-semibold uppercase tracking-[0.08em]"
-              style={{ color: 'var(--state-upcoming)', background: 'rgba(5,6,9,0.55)' }}
-            >
-              Upcoming{year ? ` · ${year}` : ''}
-            </span>
-            <div>
-              <p className="clamp-2 text-small font-semibold leading-snug text-white">{title}</p>
-              <p className="num mt-0.5 text-[0.6875rem] text-white/60">
-                {media.format?.replace('_', ' ') ?? 'Anime'}
-                {media.episodes ? ` · ${media.episodes} eps` : ''}
-              </p>
-            </div>
-          </div>
-        </div>
+        </span>
+        <span className="min-w-0">
+          <span className="clamp-2 block text-small font-semibold leading-snug text-ink">{title}</span>
+          <span className="num mt-0.5 block truncate text-[0.6875rem] text-ink-3">
+            <FormatMark format={media.format ?? undefined} />{' '}
+            {media.episodes ? `${media.episodes} eps` : 'Episode count TBA'}
+          </span>
+        </span>
       </a>
-    </motion.article>
+    </motion.li>
   )
 }
 

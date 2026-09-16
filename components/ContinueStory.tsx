@@ -5,9 +5,10 @@ import { motion } from 'framer-motion'
 import { Check, Play } from 'lucide-react'
 import { ArtworkBackdrop } from '@/components/Cover'
 import { ProgressBar } from '@/components/Bars'
-import { currentEntry, progressOfEntry } from '@/components/Cards'
 import {
   accentVars,
+  currentEntry,
+  entryRatio,
   episodeLabel,
   formatFormat,
   getEntryStatus,
@@ -34,7 +35,7 @@ export function ContinueStory({ franchise }: { franchise: Franchise }) {
   const entry = currentEntry(franchise)
   const progress = getStoryProgress(franchise)
   const phase = getEntryStatus(entry ?? franchise.seasons[0])
-  const ratio = entry ? progressOfEntry(entry) : progress.ratio
+  const ratio = entry ? entryRatio(entry) : progress.ratio
 
   if (!entry) {
     return (
