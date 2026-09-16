@@ -274,3 +274,80 @@ export async function fetchMediaByIds(ids: number[]): Promise<AniListMedia[]> {
 
   return results
 }
+
+// ---------------------------------------------------------------------------
+// Spotlight — a small slice of real AniList data used to give pre-import
+// screens genuine artwork. This is the only "content" the app renders that
+// doesn't come from the user's own list, and it is always live from the API:
+// nothing about it is hard-coded or bundled.
+// ---------------------------------------------------------------------------
+
+const SPOTLIGHT_QUERY = `
+query ($page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+      id
+      idMal
+      title {
+        romaji
+        english
+        native
+      }
+      format
+      status
+      episodes
+      duration
+      seasonYear
+      season
+      startDate {
+        year
+        month
+        day
+      }
+      genres
+      description(asHtml: false)
+      coverImage {
+        large
+        extraLarge
+        color
+      }
+      bannerImage
+      siteUrl
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            type
+            format
+            title {
+              romaji
+              english
+              native
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
+
+/**
+ * Fetches trending anime straight from AniList.
+ *
+ * Deliberately returns `[]` on failure rather than throwing: every caller is a
+ * decorative surface (the landing artwork wall, the empty dashboard), and a
+ * screensaver must never block a page from rendering.
+ */
+export async function fetchSpotlightAnime(perPage = 12): Promise<AniListMedia[]> {
+  try {
+    const data = await graphqlRequest<{ Page: { media: AniListMedia[] } | null }>(
+      SPOTLIGHT_QUERY,
+      { page: 1, perPage },
+    )
+    return data.Page?.media?.filter((media) => Boolean(media.coverImage?.extraLarge || media.coverImage?.large)) ?? []
+  } catch {
+    return []
+  }
+}

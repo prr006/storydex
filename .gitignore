@@ -9,7 +9,12 @@ __v0_jsx-dev-runtime.ts
 # Environment variables
 .env*.local
 
+# Build artefacts
+*.tsbuildinfo
+
 # Common ignores
 node_modules
 .next/
 .DS_Store
+# Real-data verification output (npm run verify:anilist)
+.verify/

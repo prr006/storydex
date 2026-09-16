@@ -32,9 +32,34 @@ export function loadLibrary(): StoredLibrary | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as StoredLibrary
+    return sanitize(JSON.parse(raw) as StoredLibrary)
   } catch {
     return null
+  }
+}
+
+/**
+ * Drops any artwork reference that isn't a real remote URL.
+ *
+ * StoryDex renders only AniList CDN artwork, so a stored library that predates
+ * that rule (or was written by an older build) could still carry a local asset
+ * path — a file this app no longer ships. Rather than render a broken image,
+ * the URL is blanked and the poster falls back to its designed placeholder.
+ */
+function sanitize(library: StoredLibrary): StoredLibrary {
+  const isRemote = (src?: string | null) => Boolean(src && /^https?:\/\//i.test(src))
+
+  return {
+    ...library,
+    franchises: (library.franchises ?? []).map((franchise) => ({
+      ...franchise,
+      posterUrl: isRemote(franchise.posterUrl) ? franchise.posterUrl : '',
+      bannerUrl: isRemote(franchise.bannerUrl) ? franchise.bannerUrl : null,
+      seasons: (franchise.seasons ?? []).map((season) => ({
+        ...season,
+        posterUrl: isRemote(season.posterUrl) ? season.posterUrl : '',
+      })),
+    })),
   }
 }
 

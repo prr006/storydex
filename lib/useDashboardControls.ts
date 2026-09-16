@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { Franchise } from './franchise'
 
 // ---------------------------------------------------------------------------
@@ -15,40 +15,45 @@ export type SortOption =
   | 'newest'
   | 'oldest'
   | 'completion'
+  | 'next-up'
 
 export type FilterChip =
   | 'all'
+  | 'in-progress'
   | 'completed'
   | 'watching'
-  | 'planning'
+  | 'planned'
+  | 'backlog'
   | 'movies'
   | 'tv'
-  | 'ova'
-  | 'ona'
   | 'upcoming'
-  | 'in-progress'
 
+/**
+ * Filter rail, ordered by usefulness rather than taxonomy. "In progress" and
+ * "Completed" are the two questions people actually ask of a library; format
+ * filters (movies/TV) are a rarely-used third tier.
+ */
 export const FILTER_CHIPS: { value: FilterChip; label: string }[] = [
   { value: 'all', label: 'All' },
+  { value: 'in-progress', label: 'In progress' },
   { value: 'completed', label: 'Completed' },
   { value: 'watching', label: 'Watching' },
-  { value: 'planning', label: 'Planning' },
-  { value: 'movies', label: 'Movies' },
-  { value: 'tv', label: 'TV' },
-  { value: 'ova', label: 'OVA' },
-  { value: 'ona', label: 'ONA' },
+  { value: 'planned', label: 'Planned' },
+  { value: 'backlog', label: 'Backlog' },
+  { value: 'movies', label: 'Films' },
+  { value: 'tv', label: 'Series' },
   { value: 'upcoming', label: 'Upcoming' },
-  { value: 'in-progress', label: 'In Progress' },
 ]
 
 export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'most-seasons', label: 'Most Seasons' },
+  { value: 'next-up', label: 'Closest to finishing' },
+  { value: 'most-seasons', label: 'Longest story' },
+  { value: 'most-episodes', label: 'Most episodes' },
+  { value: 'completion', label: 'Completion' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
   { value: 'az', label: 'A\u2013Z' },
   { value: 'za', label: 'Z\u2013A' },
-  { value: 'most-episodes', label: 'Most Episodes' },
-  { value: 'newest', label: 'Newest Franchise' },
-  { value: 'oldest', label: 'Oldest Franchise' },
-  { value: 'completion', label: 'Completion %' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -66,29 +71,47 @@ function normalizeSearch(s: string): string {
 
 const CURRENT_YEAR = new Date().getFullYear()
 
-function matchesFilter(franchise: Franchise, filter: FilterChip): boolean {
+function watchedRatio(franchise: Franchise): number {
+  const total = franchise.seasons.length
+  if (total === 0) return 0
+  const done = franchise.seasons.filter(
+    (s) => s.completed || s.status === 'COMPLETED' || s.status === 'REPEATING',
+  ).length
+  return done / total
+}
+
+function entryStatus(season: Franchise['seasons'][number]): string {
+  if (season.completed || season.status === 'COMPLETED' || season.status === 'REPEATING') return 'watched'
+  if (season.status === 'CURRENT') return 'watching'
+  if (season.status === 'DROPPED') return 'dropped'
+  if (season.status === 'PAUSED') return 'paused'
+  if (season.airingStatus === 'NOT_YET_RELEASED' || (!season.airingStatus && season.year > CURRENT_YEAR))
+    return 'upcoming'
+  if (season.status === 'PLANNING') return 'planned'
+  return 'unwatched'
+}
+
+export function matchesFilter(franchise: Franchise, filter: FilterChip): boolean {
   const { seasons, completedSeasons, totalSeasons } = franchise
   switch (filter) {
     case 'all':
       return true
     case 'completed':
       return totalSeasons > 0 && completedSeasons === totalSeasons
+    case 'in-progress':
+      return completedSeasons > 0 && completedSeasons < totalSeasons
     case 'watching':
-      return seasons.some((s) => s.status === 'CURRENT')
-    case 'planning':
-      return seasons.some((s) => s.status === 'PLANNING')
+      return seasons.some((s) => entryStatus(s) === 'watching')
+    case 'planned':
+      return seasons.some((s) => entryStatus(s) === 'planned')
+    case 'backlog':
+      return completedSeasons === 0 && !seasons.some((s) => entryStatus(s) === 'planned')
     case 'movies':
       return seasons.some((s) => s.format === 'MOVIE')
     case 'tv':
-      return seasons.some((s) => s.format === 'TV')
-    case 'ova':
-      return seasons.some((s) => s.format === 'OVA')
-    case 'ona':
-      return seasons.some((s) => s.format === 'ONA')
+      return seasons.some((s) => s.format === 'TV' || s.format === 'TV_SHORT')
     case 'upcoming':
-      return seasons.some((s) => s.year > CURRENT_YEAR)
-    case 'in-progress':
-      return completedSeasons > 0 && completedSeasons < totalSeasons
+      return seasons.some((s) => entryStatus(s) === 'upcoming')
     default:
       return true
   }
@@ -120,11 +143,10 @@ function sortFranchises(list: Franchise[], sort: SortOption): Franchise[] {
         }
         return minYear(a) - minYear(b) || a.name.localeCompare(b.name)
       }
-      case 'completion': {
-        const pctA = a.totalSeasons > 0 ? a.completedSeasons / a.totalSeasons : 0
-        const pctB = b.totalSeasons > 0 ? b.completedSeasons / b.totalSeasons : 0
-        return pctB - pctA || a.name.localeCompare(b.name)
-      }
+      case 'completion':
+        return watchedRatio(b) - watchedRatio(a) || a.name.localeCompare(b.name)
+      case 'next-up':
+        return watchedRatio(b) - watchedRatio(a) || a.name.localeCompare(b.name)
       default:
         return 0
     }
@@ -143,22 +165,21 @@ export interface DashboardControls {
   activeFilter: FilterChip
   setActiveFilter: (f: FilterChip) => void
   filtered: Franchise[]
+  /** How many stories each chip would show — lets the rail hide dead filters. */
+  counts: Record<FilterChip, number>
 }
 
 export function useDashboardControls(franchises: Franchise[]): DashboardControls {
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<SortOption>('most-seasons')
+  const [sort, setSort] = useState<SortOption>('next-up')
   const [activeFilter, setActiveFilter] = useState<FilterChip>('all')
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalizeSearch(query)
 
-    let result = franchises.filter((franchise) => {
-      // 1. Filter chip
+    const result = franchises.filter((franchise) => {
       if (!matchesFilter(franchise, activeFilter)) return false
 
-      // 2. Search: match franchise name OR any season title, case- and
-      //    punctuation-insensitive (normalizeSearch strips all punctuation)
       if (normalizedQuery) {
         const nameMatch = normalizeSearch(franchise.name).includes(normalizedQuery)
         const seasonMatch = franchise.seasons.some((s) =>
@@ -170,11 +191,27 @@ export function useDashboardControls(franchises: Franchise[]): DashboardControls
       return true
     })
 
-    // 3. Sort after filtering
-    result = sortFranchises(result, sort)
-
-    return result
+    return sortFranchises(result, sort)
   }, [franchises, query, sort, activeFilter])
 
-  return { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered }
+  // Counts are computed against the current search only, so the numbers on
+  // the chips describe what they'd actually do.
+  const counts = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query)
+    const searchScoped = normalizedQuery
+      ? franchises.filter(
+          (franchise) =>
+            normalizeSearch(franchise.name).includes(normalizedQuery) ||
+            franchise.seasons.some((s) => normalizeSearch(s.name).includes(normalizedQuery)),
+        )
+      : franchises
+
+    const result = {} as Record<FilterChip, number>
+    for (const chip of FILTER_CHIPS) {
+      result[chip.value] = searchScoped.filter((f) => matchesFilter(f, chip.value)).length
+    }
+    return result
+  }, [franchises, query])
+
+  return { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered, counts }
 }

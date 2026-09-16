@@ -21,6 +21,7 @@ export interface Season {
   /** Episodes watched so far */
   progress?: number
   aniListId?: number
+  /** AniList CDN cover URL. Empty when AniList has no artwork for the entry. */
   posterUrl?: string
   siteUrl?: string | null
   isExpanded?: boolean
@@ -30,8 +31,14 @@ export interface Season {
 export interface Franchise {
   id: string
   name: string
+  /** AniList CDN cover URL (extraLarge where available). */
   posterUrl: string
+  /** AniList CDN banner URL. Null when the API has none — the UI derives a
+   *  cinematic hero from the cover instead. */
   bannerUrl?: string | null
+  /** `coverImage.color` from AniList — the artwork's own dominant colour, used
+   *  to tint that story's hero and atmosphere. Null when AniList omits it. */
+  accentColor?: string | null
   totalSeasons: number
   completedSeasons: number
   genres: string[]
@@ -220,8 +227,8 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
     if (!existing) {
       deduped.set(entry.media.id, entry)
     } else {
-      const existingPriority = STATUS_PRIORITY[existing.status] ?? 0
-      const newPriority = STATUS_PRIORITY[entry.status] ?? 0
+      const existingPriority = STATUS_PRIORITY[existing.status ?? ''] ?? 0
+      const newPriority = STATUS_PRIORITY[entry.status ?? ''] ?? 0
       if (newPriority > existingPriority) {
         deduped.set(entry.media.id, entry)
       }
@@ -317,7 +324,7 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
         score: entry.score ?? 0,
         progress: entry.progress ?? 0,
         aniListId: entry.media.id,
-        posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
+        posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '',
         siteUrl: entry.media.siteUrl,
         isExpanded: entry.isExpanded,
         airingStatus: entry.media.status,
@@ -339,8 +346,13 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
     franchises.push({
       id: String(primary.media.id),
       name: preferredTitle(primary.media.title),
-      posterUrl: primary.media.coverImage?.extraLarge || primary.media.coverImage?.large || '/placeholder.svg',
-      bannerUrl: sorted.find((e) => e.media.bannerImage)?.media.bannerImage ?? null,
+      posterUrl: primary.media.coverImage?.extraLarge || primary.media.coverImage?.large || '',
+      // Prefer a banner from the primary entry, else borrow one from any entry
+      // in the franchise — a franchise hero should use real artwork whenever
+      // *any* of its entries has some.
+      bannerUrl:
+        (primary.media.bannerImage ?? sorted.find((e) => e.media.bannerImage)?.media.bannerImage) || null,
+      accentColor: primary.media.coverImage?.color ?? null,
       totalSeasons: seasons.length,
       completedSeasons,
       genres: Array.from(genreSet),

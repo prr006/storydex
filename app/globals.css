@@ -1,235 +1,443 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&family=JetBrains+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
+/* ==========================================================================
+   STORYDEX — "MIDNIGHT ARCHIVE" DESIGN SYSTEM
+   --------------------------------------------------------------------------
+   A screening-room aesthetic: ink-black canvas with a violet bias, layered
+   atmosphere (aurora + grain + vignette), artwork-first composition, and a
+   three-family type system (editorial serif / geometric sans / technical mono).
+
+   Principles encoded here:
+   1. Surfaces are separated by LIGHT (gradients), not by borders.
+   2. Warm accent (ember) appears once per screen — it marks "what's next".
+   3. Glow is a hover/precision signal, never ambient decoration.
+   ========================================================================== */
+
 @theme inline {
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --color-brand: var(--brand);
-  --color-brand-dark: var(--brand-dark);
-  --color-brand-light: var(--brand-light);
-  --color-neutral-800: var(--neutral-800);
-  
-  /* Stitch 2.0 Color Palette */
-  --color-surface: #12121e;
-  --color-surface-container: #1d1f26;
-  --color-surface-container-high: #282a31;
-  --color-surface-container-highest: #33343c;
-  --color-surface-container-low: #191b22;
-  --color-surface-container-lowest: #0c0e15;
-  --color-surface-dim: #11131a;
-  --color-surface-bright: #373941;
-  --color-on-surface: #e2e2ec;
-  --color-on-surface-variant: #ccc3d8;
-  --color-primary-fixed: #eaddff;
-  --color-primary-fixed-dim: #d2bbff;
-  --color-primary-container: #7c3aed;
-  --color-on-primary-container: #ede0ff;
-  --color-status-watching: #60a5fa;
-  --color-status-watched: #4ade80;
-  --color-status-planning: #c084fc;
-  --color-muted-deep: #1a1a2c;
-  
-  /* Font families */
-  --font-display: 'Plus Jakarta Sans', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* --- Font families -----------------------------------------------------
+     Loaded from the Google Fonts stylesheet linked in app/layout.tsx, so the
+     browser fetches them directly and the build has no network dependency.
+     Each stack degrades to a character-matched system face. */
+  --font-display: 'Instrument Serif', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia,
+    'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+
+  /* --- Compatibility aliases -------------------------------------------- */
+  /* Older classes referenced these names; keep them pointing at the new
+     palette so nothing renders as an unstyled fallback. */
+  --color-background: var(--color-ink-950);
+  --color-foreground: var(--color-chalk);
+  --color-card: var(--color-ink-850);
+  --color-card-foreground: var(--color-chalk);
+  --color-popover: var(--color-ink-800);
+  --color-popover-foreground: var(--color-chalk);
+  --color-primary: var(--color-brand-300);
+  --color-primary-foreground: var(--color-ink-950);
+  --color-primary-container: var(--color-brand-600);
+  --color-on-primary-container: var(--color-brand-100);
+  --color-primary-fixed: var(--color-brand-100);
+  --color-primary-fixed-dim: var(--color-brand-300);
+  --color-secondary: var(--color-indigo-300);
+  --color-secondary-foreground: var(--color-ink-950);
+  --color-secondary-container: var(--color-indigo-700);
+  --color-muted: var(--color-ink-700);
+  --color-muted-foreground: var(--color-mist);
+  --color-muted-deep: var(--color-ink-900);
+  --color-accent: var(--color-brand-500);
+  --color-accent-foreground: #ffffff;
+  --color-destructive: var(--color-coral);
+  --color-border: var(--color-hairline-strong);
+  --color-input: var(--color-ink-800);
+  --color-ring: var(--color-brand-400);
+  --color-surface: var(--color-ink-850);
+  --color-surface-container: var(--color-ink-800);
+  --color-surface-container-low: var(--color-ink-850);
+  --color-surface-container-lowest: var(--color-ink-900);
+  --color-surface-container-high: var(--color-ink-700);
+  --color-surface-container-highest: var(--color-ink-600);
+  --color-surface-dim: var(--color-ink-900);
+  --color-surface-bright: var(--color-ink-500);
+  --color-surface-variant: var(--color-ink-600);
+  --color-on-surface: var(--color-chalk);
+  --color-on-surface-variant: var(--color-mist);
+
+  /* --- Chart ramp ------------------------------------------------------- */
+  --color-chart-1: var(--color-brand-400);
+  --color-chart-2: var(--color-indigo-400);
+  --color-chart-3: var(--color-jade);
+  --color-chart-4: var(--color-ember);
+  --color-chart-5: var(--color-mist);
 }
 
-:root {
-  color-scheme: dark;
-  /* Stitch 2.0 Deep Midnight Navy Background */
-  --background: #0a0a14;
-  --foreground: #e2e2ec;
-  --card: #12121e;
-  --card-foreground: #e2e2ec;
-  --popover: #12121e;
-  --popover-foreground: #e2e2ec;
-  --primary: #d2bbff;
-  --primary-foreground: #3f008e;
-  --secondary: #bdc2ff;
-  --secondary-foreground: #131e8c;
-  --muted: #1a1a2c;
-  --muted-foreground: #ccc3d8;
-  --accent: #7c3aed;
-  --accent-foreground: #ffffff;
-  --destructive: #ffb4ab;
-  --border: #4a4455;
-  --input: #191b22;
-  --ring: #d2bbff;
-  --chart-1: #d2bbff;
-  --chart-2: #bdc2ff;
-  --chart-3: #c7c5d3;
-  --chart-4: #e4e1f0;
-  --chart-5: #eaddff;
-  --radius: 0.75rem;
-  --sidebar: #12121e;
-  --sidebar-foreground: #e2e2ec;
-  --sidebar-primary: #7c3aed;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a1a2c;
-  --sidebar-accent-foreground: #e2e2ec;
-  --sidebar-border: #4a4455;
-  --sidebar-ring: #d2bbff;
-  --brand: #7c3aed;
-  --brand-dark: #5a00c6;
-  --brand-light: #d2bbff;
-  --neutral-800: #0a0a14;
-}
+@theme {
+  /* ======================================================================
+     1. COLOR — "Midnight Archive"
+     ====================================================================== */
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
+  /* Ink canvas. Every step gains a violet bias so nothing reads as a
+     neutral Tailwind gray. */
+  --color-ink-950: #050410;
+  --color-ink-900: #08070f;
+  --color-ink-850: #0b0917;
+  --color-ink-800: #100e1e;
+  --color-ink-700: #171428;
+  --color-ink-600: #1f1b35;
+  --color-ink-500: #2a2545;
+
+  /* Text. Chalk is slightly warm-white; mist is the workhorse secondary. */
+  --color-chalk: #f2f0fa;
+  --color-mist: #a9a3c4;
+  --color-veil: #6f6a8c;
+
+  /* StoryDex violet — the identity. Brand-500 is the primary action color. */
+  --color-brand-100: #ece6ff;
+  --color-brand-300: #c4b2ff;
+  --color-brand-400: #a78bfa;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7137ea;
+  --color-brand-700: #5a1fc4;
+  --color-brand-900: #2a0f63;
+
+  /* Indigo — the secondary half of the identity gradient. */
+  --color-indigo-300: #b9c0ff;
+  --color-indigo-400: #8f97ff;
+  --color-indigo-700: #353c9e;
+
+  /* Ember — the ONE warm accent. Reserved for "what to watch next". */
+  --color-ember: #ffb457;
+  --color-ember-dim: #c9853a;
+
+  /* Story status semantics. Deliberately distinct hues, low-usage. */
+  --color-jade: #45e0a0;
+  --color-jade-dim: #1f8a5e;
+  --color-azure: #5ec8ff;
+  --color-azure-dim: #1f6f9e;
+  --color-lilac: #b79cff;
+  --color-coral: #ff7a6b;
+  --color-slate: #7f8ba3;
+
+  /* Hairlines replace borders. */
+  --color-hairline: rgba(255, 255, 255, 0.07);
+  --color-hairline-strong: rgba(255, 255, 255, 0.12);
+
+  /* ======================================================================
+     2. TYPOGRAPHY SCALE — big ranges, tight tracking, generous leading
+     ====================================================================== */
+
+  /* Editorial serif — used for story titles, hero copy, and ledger numerals. */
+  --text-display: 5.5rem; /* 88px */
+  --text-display--line-height: 0.94;
+  --text-display--letter-spacing: -0.03em;
+  --text-display-sm: 3.25rem; /* 52px */
+  --text-display-sm--line-height: 0.98;
+  --text-display-sm--letter-spacing: -0.025em;
+  --text-title: 2rem; /* 32px */
+  --text-title--line-height: 1.08;
+  --text-title--letter-spacing: -0.02em;
+  --text-title-sm: 1.375rem; /* 22px */
+  --text-title-sm--line-height: 1.2;
+  --text-title-sm--letter-spacing: -0.015em;
+
+  /* UI sans */
+  --text-lead: 1.0625rem; /* 17px */
+  --text-lead--line-height: 1.65;
+  --text-body: 0.9375rem; /* 15px */
+  --text-body--line-height: 1.6;
+  --text-body-sm: 0.8125rem; /* 13px */
+  --text-body-sm--line-height: 1.5;
+
+  /* Technical mono — labels, counts, timestamps, percentages. */
+  --text-label: 0.6875rem; /* 11px */
+  --text-label--line-height: 1;
+  --text-label--letter-spacing: 0.14em;
+  --text-data: 0.8125rem; /* 13px */
+  --text-data--line-height: 1;
+  --text-data--letter-spacing: 0.02em;
+  --text-data-lg: 1rem;
+  --text-data-lg--line-height: 1;
+  --text-data-lg--letter-spacing: 0;
+
+  /* ======================================================================
+     3. SPACE, LAYOUT, SHAPE
+     ====================================================================== */
+  --spacing-gutter: 1.25rem;
+  --spacing-gutter-lg: 2.5rem;
+  --spacing-shell: 1.25rem;
+  --spacing-section: 5.5rem;
+  --container-page: 1400px;
+
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.25rem;
+
+  /* ======================================================================
+     4. MOTION — one easing family, four durations
+     ====================================================================== */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-drift: drift 34s var(--ease-in-out-soft) infinite alternate;
+  --animate-breathe: breathe 5s var(--ease-in-out-soft) infinite;
+  --animate-halo: halo 2.8s var(--ease-in-out-soft) infinite;
+  --animate-sheen: sheen 6s linear infinite;
+  --animate-rise: rise 0.7s var(--ease-out-expo) both;
+
+  @keyframes drift {
+    0% {
+      transform: translate3d(-4%, -2%, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(3%, 2%, 0) scale(1.12);
+    }
+    100% {
+      transform: translate3d(-2%, 4%, 0) scale(1.04);
+    }
   }
-  html {
-    @apply bg-background;
-    scroll-behavior: smooth;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.06);
+    }
   }
-  body {
-    @apply bg-background text-foreground font-body;
+  @keyframes halo {
+    0% {
+      box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5);
+    }
+    70% {
+      box-shadow: 0 0 0 14px rgba(139, 92, 246, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
   }
-  
-  /* Typography utilities */
-  .font-display-hero {
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    line-height: 1.1;
+  @keyframes sheen {
+    0% {
+      transform: translateX(-120%);
+    }
+    60%,
+    100% {
+      transform: translateX(220%);
+    }
   }
-  .font-display-hero-mobile {
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-  }
-  .font-headline-lg {
-    font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.3;
-  }
-  .font-section-header {
-    font-family: var(--font-display);
-    font-weight: 700;
-    line-height: 1.4;
-  }
-  .font-label-caps {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-  .font-data-tabular {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    line-height: 1;
-  }
-  
-  /* Scrollbar utilities */
-  .scrollbar-none {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Glass panel effect */
-  .glass-panel {
-    background: rgba(29, 31, 38, 0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-  
-  /* Brand glow shadow */
-  .shadow-brand-glow {
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
-  }
-  .shadow-brand-glow\/20 {
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
-  }
-  
-  /* Text shadow for hero text */
-  .text-shadow {
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  }
-  .text-shadow-sm {
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  }
-  
-  /* Scrim gradient */
-  .scrim-gradient {
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
-  }
-  
-  /* Fade-in animation */
-  .fade-in {
-    animation: fadeIn 0.5s ease-in-out forwards;
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  
-  @keyframes fadeIn {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
-  
-  .stagger-1 { animation-delay: 0.1s; }
-  .stagger-2 { animation-delay: 0.2s; }
-  .stagger-3 { animation-delay: 0.3s; }
-  .stagger-4 { animation-delay: 0.4s; }
-  .stagger-5 { animation-delay: 0.5s; }
-  
-  /* Reduced-motion: honour system preference */
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+  --radius: 0.75rem;
+  --shell-x: clamp(1.25rem, 4vw, 3rem);
+  --nav-h: 68px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-hairline);
+  }
+
+  html {
+    background-color: var(--color-ink-950);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    color: var(--color-chalk);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-brand-500) 45%, transparent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Thin, unobtrusive scrollbars on horizontal rails. */
+  .rail {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
+}
+
+/* ==========================================================================
+   ATMOSPHERE — the layer that makes StoryDex stop looking like a dashboard
+   ========================================================================== */
+
+@utility shell {
+  width: 100%;
+  max-width: var(--container-page);
+  margin-inline: auto;
+  padding-inline: var(--shell-x);
+}
+
+/* Film grain. Sits above the canvas, below content, never intercepts input. */
+@utility grain {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.16;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* A hairline that fades out at both ends — replaces a hard 1px border. */
+@utility rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.13) 12%,
+    rgba(255, 255, 255, 0.13) 88%,
+    transparent
+  );
+}
+
+/* The only place real glass is allowed: chrome that floats over artwork. */
+@utility glass {
+  background: color-mix(in oklab, var(--color-ink-900) 62%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+
+@utility glass-chip {
+  background: rgba(8, 7, 15, 0.5);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+
+/* Inset rim-light. Gives a card an edge without a border. */
+@utility rim {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+@utility rim-hover {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(167, 139, 250, 0.22),
+    0 24px 60px -24px rgba(0, 0, 0, 0.9);
+}
+
+/* Bottom scrim for text over artwork. Multi-stop for controllable contrast. */
+@utility scrim-b {
+  background: linear-gradient(
+    to top,
+    rgba(5, 4, 16, 0.96) 0%,
+    rgba(5, 4, 16, 0.82) 22%,
+    rgba(5, 4, 16, 0.42) 52%,
+    rgba(5, 4, 16, 0.08) 78%,
+    transparent 100%
+  );
+}
+
+@utility scrim-t {
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 4, 16, 0.9) 0%,
+    rgba(5, 4, 16, 0.45) 40%,
+    transparent 100%
+  );
+}
+
+@utility scrim-soft {
+  background: linear-gradient(
+    to top,
+    rgba(5, 4, 16, 0.9) 0%,
+    rgba(5, 4, 16, 0.55) 40%,
+    rgba(5, 4, 16, 0.22) 70%,
+    transparent 100%
+  );
+}
+
+/* Editorial type helpers */
+@utility text-editorial {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+@utility label {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-data);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+/* Brand gradient text — used sparingly, for the wordmark + one hero word. */
+@utility text-brand-gradient {
+  background: linear-gradient(100deg, #ffffff 6%, var(--color-brand-300) 46%, var(--color-indigo-400) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility hairline-t {
+  border-top: 1px solid var(--color-hairline);
+}
+@utility hairline-b {
+  border-bottom: 1px solid var(--color-hairline);
 }
