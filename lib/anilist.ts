@@ -79,6 +79,10 @@ export interface AniListMedia {
   bannerImage: string | null
   siteUrl: string | null
   status: AniListMediaAiringStatus | null
+  /** AniList community score, 0–100. */
+  averageScore: number | null
+  /** How many AniList users have this on a list. */
+  popularity: number | null
   relations: { edges: AniListRelationEdge[] } | null
 }
 
@@ -299,6 +303,8 @@ query ($page: Int, $perPage: Int) {
       duration
       seasonYear
       season
+      averageScore
+      popularity
       startDate {
         year
         month

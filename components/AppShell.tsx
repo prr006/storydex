@@ -77,14 +77,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main>{children}</main>
 
-        <footer className="shell section-rule mt-24 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 py-8 text-small text-ink-3">
+        <footer className="shell mt-24 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 border-t border-line py-8 text-small text-ink-3">
           <p>
             Metadata and artwork from{' '}
             <a
               href="https://anilist.co"
               target="_blank"
               rel="noreferrer"
-              className="underline decoration-rule-strong underline-offset-4 hover:text-ink-2"
+              className="text-ink-2 transition-colors hover:text-ink"
             >
               AniList
             </a>

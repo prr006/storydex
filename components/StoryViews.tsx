@@ -1,14 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { Cover, FormatMark } from '@/components/Cover'
-import { CompositionStrip, EntryRuler } from '@/components/EntryRuler'
-import { StatusMark } from '@/components/StatusMark'
-import { StoryCard, statusTokenFor } from '@/components/StoryCard'
+import { ProgressBar, SegmentBar } from '@/components/Bars'
+import { StatusChip } from '@/components/StatusMark'
+import { PosterCard, phaseToStatus } from '@/components/Cards'
 import { cn } from '@/lib/utils'
 import {
+  accentVars,
   formatEpisodes,
+  formatScore,
   getEntryStatus,
+  getEpisodeTotal,
   getNextEntry,
   getStoryPhase,
   getStoryProgress,
@@ -19,13 +23,15 @@ import type { Franchise } from '@/lib/franchise'
 /* ==========================================================================
    The three densities
    --------------------------------------------------------------------------
-   One dataset, three reading behaviours. This is the answer to "don't force
-   one giant poster wall": the same library is browsable by cover, by progress,
-   or as a comparison table, and the choice belongs to the user.
+   One dataset, three reading behaviours — the answer to "don't force one giant
+   poster wall" without giving up a poster wall:
 
-     Grid  — scanning by artwork. Cards. 2 → 5 columns.
-     List  — scanning by progress. One ruled row per story, cover at 56px.
-     Table — comparing many at once. Dense columns, one row per story.
+     Grid   scanning by artwork. Large posters, minimal text. The default.
+     List   scanning by progress. 16:9 plates with the bar given room to read.
+     Table  comparing many at once. Dense metadata, dark rows, artwork kept.
+
+   All three stay inside the same visual language: artwork plates, one accent
+   bar, status chips, type set at the same scale.
    ========================================================================== */
 
 /* -------------------------------------------------------------------------- */
@@ -34,9 +40,9 @@ import type { Franchise } from '@/lib/franchise'
 
 export function StoryGrid({ franchises }: { franchises: Franchise[] }) {
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       {franchises.map((franchise, index) => (
-        <StoryCard key={franchise.id} franchise={franchise} index={index} />
+        <PosterCard key={franchise.id} franchise={franchise} index={index} />
       ))}
     </div>
   )
@@ -48,68 +54,73 @@ export function StoryGrid({ franchises }: { franchises: Franchise[] }) {
 
 export function StoryList({ franchises }: { franchises: Franchise[] }) {
   return (
-    <ul className="border-t border-rule">
-      {franchises.map((franchise) => (
-        <StoryListRow key={franchise.id} franchise={franchise} />
+    <ul className="space-y-2">
+      {franchises.map((franchise, index) => (
+        <StoryRow key={franchise.id} franchise={franchise} index={index} />
       ))}
     </ul>
   )
 }
 
-function StoryListRow({ franchise }: { franchise: Franchise }) {
+function StoryRow({ franchise, index }: { franchise: Franchise; index: number }) {
   const progress = getStoryProgress(franchise)
   const phase = getStoryPhase(franchise)
-  const meta = phaseCopy(phase)
   const next = getNextEntry(franchise)
-  const span = yearSpan(franchise)
+  const episodes = getEpisodeTotal(franchise)
+  const art = franchise.bannerUrl || franchise.posterUrl
 
   return (
-    <li className="border-b border-rule">
+    <motion.li
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.025, 0.2), ease: [0.22, 1, 0.36, 1] }}
+      style={accentVars(franchise)}
+    >
       <Link
         href={`/franchise/${franchise.id}`}
-        className="group/row flex items-center gap-5 py-4 transition-colors duration-150 hover:bg-sunk/50"
+        className="group/art flex items-center gap-4 rounded-md border border-line bg-surface p-3 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15 hover:bg-surface-2"
       >
-        <Cover
-          src={franchise.posterUrl}
-          alt={franchise.name}
-          tint={franchise.accentColor}
-          ratio="2/3"
-          rounded={false}
-          sizes="80px"
-          className="w-14 shrink-0"
-        />
+        <span className="relative block h-[72px] w-[124px] shrink-0 overflow-hidden rounded-sm">
+          <Cover
+            src={art}
+            alt=""
+            tint={franchise.accentColor}
+            isBanner={Boolean(franchise.bannerUrl)}
+            ratio="16/9"
+            edged={false}
+            rounded={false}
+            hoverZoom
+            sizes="124px"
+            className="h-full w-full"
+          />
+        </span>
 
-        {/* Title + where you are */}
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[1.0625rem] font-semibold tracking-[-0.012em] text-ink">
-            {franchise.name}
-          </h3>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-small text-ink-3">
-            <span className="num">{span}</span>
-            <span aria-hidden className="text-rule-strong">
-              ·
-            </span>
-            <span className="num">
-              {progress.completed} of {progress.total} entries
-            </span>
-            {next && !progress.complete && (
-              <>
-                <span aria-hidden className="text-rule-strong">
-                  ·
-                </span>
-                <span className="truncate text-ink-2">Next: {next.name}</span>
-              </>
-            )}
-          </p>
-          <EntryRuler entries={franchise.seasons} size="sm" className="mt-2.5 max-w-md" />
-        </div>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-3">
+            <span className="truncate text-card font-semibold text-ink">{franchise.name}</span>
+            <StatusChip status={phaseToStatus(phase)} size="xs" className="shrink-0" />
+          </span>
 
-        {/* Status */}
-        <div className="hidden w-32 shrink-0 sm:block">
-          <StatusMark status={statusTokenFor(phase)} label={meta.label} />
-        </div>
+          <span className="mt-1 block truncate text-small text-ink-3">
+            {next ? `Next: ${next.name}` : 'Everything watched'}
+          </span>
+
+          <span className="mt-2.5 flex max-w-[26rem] items-center gap-3">
+            <ProgressBar value={progress.ratio} height="sm" animate={false} className="flex-1" />
+            <span className="num shrink-0 text-small text-ink-2">
+              {progress.completed}/{progress.total}
+            </span>
+          </span>
+        </span>
+
+        <span className="hidden w-[13rem] shrink-0 lg:block">
+          <SegmentBar entries={franchise.seasons} height="xs" animate={false} />
+          <span className="num mt-2 block text-small text-ink-3">
+            {franchise.seasons.length} entries · {episodes.toLocaleString('en-US')} eps
+          </span>
+        </span>
       </Link>
-    </li>
+    </motion.li>
   )
 }
 
@@ -119,25 +130,28 @@ function StoryListRow({ franchise }: { franchise: Franchise }) {
 
 export function StoryTable({ franchises }: { franchises: Franchise[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] border-collapse text-left">
-        <thead>
-          <tr className="border-b border-rule-strong">
-            <Th className="w-[340px]">Story</Th>
-            <Th className="w-[92px]">Entries</Th>
-            <Th className="w-[160px]">Progress</Th>
-            <Th className="w-[120px]">Watched</Th>
-            <Th className="w-[130px]">Status</Th>
-            <Th className="w-[90px]">Years</Th>
-            <Th className="w-[110px]">Next</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {franchises.map((franchise) => (
-            <StoryTableRow key={franchise.id} franchise={franchise} />
-          ))}
-        </tbody>
-      </table>
+    <div className="overflow-hidden rounded-md border border-line bg-surface">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px] border-collapse text-left">
+          <caption className="sr-only">Every story in your library</caption>
+          <thead>
+            <tr className="border-b border-line">
+              <Th className="w-[320px] pl-4">Story</Th>
+              <Th className="w-[92px]">Entries</Th>
+              <Th className="w-[150px]">Progress</Th>
+              <Th className="w-[110px]">Episodes</Th>
+              <Th className="w-[130px]">Status</Th>
+              <Th className="w-[150px]">Next up</Th>
+              <Th className="w-[80px] pr-4 text-right">Score</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {franchises.map((franchise) => (
+              <StoryTableRow key={franchise.id} franchise={franchise} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -145,67 +159,75 @@ export function StoryTable({ franchises }: { franchises: Franchise[] }) {
 function StoryTableRow({ franchise }: { franchise: Franchise }) {
   const progress = getStoryProgress(franchise)
   const phase = getStoryPhase(franchise)
-  const meta = phaseCopy(phase)
   const next = getNextEntry(franchise)
-  const nextStatus = next ? getEntryStatus(next) : null
+  const episodes = getEpisodeTotal(franchise)
+  const scores = franchise.seasons.map((entry) => entry.score ?? 0).filter((score) => score > 0)
+  const average = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0
 
   return (
-    <tr className="border-b border-rule transition-colors duration-150 hover:bg-sunk/50">
-      <td className="py-2.5 pr-4">
-        <Link
-          href={`/franchise/${franchise.id}`}
-          className="group/cell flex items-center gap-3"
-        >
-          <Cover
-            src={franchise.posterUrl}
-            alt=""
-            tint={franchise.accentColor}
-            ratio="2/3"
-            rounded={false}
-            sizes="40px"
-            className="w-8 shrink-0"
-          />
+    <tr
+      className="border-b border-line transition-colors last:border-b-0 hover:bg-white/[0.03]"
+      style={accentVars(franchise)}
+    >
+      <td className="py-3 pl-4 pr-4">
+        <Link href={`/franchise/${franchise.id}`} className="group/row flex items-center gap-3">
+          <span className="relative block h-12 w-9 shrink-0 overflow-hidden rounded-xs">
+            <Cover
+              src={franchise.posterUrl}
+              alt=""
+              tint={franchise.accentColor}
+              ratio="2/3"
+              edged={false}
+              rounded={false}
+              sizes="36px"
+              className="h-full w-full"
+            />
+          </span>
           <span className="min-w-0">
-            <span className="block truncate text-body font-semibold text-ink group-hover/cell:text-brand-text">
+            <span className="block truncate text-body font-semibold text-ink transition-colors group-hover/row:text-brand-strong">
               {franchise.name}
             </span>
-            <span className="mt-0.5 flex items-center gap-2">
-              <CompositionStrip entries={franchise.seasons} />
+            <span className="mt-1 block">
+              <SegmentBar entries={franchise.seasons} height="xs" animate={false} className="max-w-[8rem]" />
             </span>
           </span>
         </Link>
       </td>
 
-      <td className="num py-2.5 pr-4 text-body text-ink-2">{progress.total}</td>
+      <td className="num py-3 pr-4 text-body text-ink-2">{progress.total}</td>
 
-      <td className="py-2.5 pr-4">
-        <EntryRuler entries={franchise.seasons} size="sm" gap="tight" animate={false} />
+      <td className="py-3 pr-4">
+        <span className="flex items-center gap-2.5">
+          <ProgressBar value={progress.ratio} height="sm" animate={false} className="w-20" />
+          <span className="num text-small text-ink-2">{Math.round(progress.ratio * 100)}%</span>
+        </span>
       </td>
 
-      <td className="num py-2.5 pr-4 text-body text-ink">
-        {progress.completed}
-        <span className="text-ink-3"> / {progress.total}</span>
+      <td className="num py-3 pr-4 text-small text-ink-2">
+        {progress.completed}/{progress.total} · {episodes.toLocaleString('en-US')} eps
       </td>
 
-      <td className="py-2.5 pr-4">
-        <StatusMark status={statusTokenFor(phase)} label={meta.label} />
+      <td className="py-3 pr-4">
+        <StatusChip status={phaseToStatus(phase)} size="xs" />
       </td>
 
-      <td className="num py-2.5 pr-4 text-small text-ink-2">{yearSpan(franchise)}</td>
-
-      <td className="py-2.5">
-        {next && !progress.complete ? (
-          <span className="block max-w-[130px]">
+      <td className="py-3 pr-4">
+        {next ? (
+          <span className="block max-w-[160px]">
             <span className="block truncate text-small text-ink-2">{next.name}</span>
-            {nextStatus === 'upcoming' ? (
-              <span className="text-small text-ink-3">not aired</span>
-            ) : (
-              <span className="num text-small text-ink-3">{formatEpisodes(next)}</span>
-            )}
+            <span className="num block text-[0.6875rem] text-ink-3">
+              {getEntryStatus(next) === 'upcoming'
+                ? `Not aired${next.year > 0 ? ` · ${next.year}` : ''}`
+                : formatEpisodes(next)}
+            </span>
           </span>
         ) : (
           <span className="text-small text-ink-3">—</span>
         )}
+      </td>
+
+      <td className="num py-3 pr-4 text-right text-small text-ink-2">
+        {formatScore(average) ?? '—'}
       </td>
     </tr>
   )
@@ -216,7 +238,7 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
     <th
       scope="col"
       className={cn(
-        'pb-2.5 pr-4 text-micro font-semibold uppercase tracking-[0.08em] text-ink-3',
+        'py-3 pr-4 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-ink-3',
         className,
       )}
     >
@@ -224,15 +246,3 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
     </th>
   )
 }
-
-/* -------------------------------------------------------------------------- */
-
-export function yearSpan(franchise: Franchise): string {
-  const years = franchise.seasons.map((s) => s.year).filter((y) => y > 0)
-  if (years.length === 0) return '—'
-  const min = Math.min(...years)
-  const max = Math.max(...years)
-  return min === max ? String(min) : `${min}–${max}`
-}
-
-export { FormatMark }

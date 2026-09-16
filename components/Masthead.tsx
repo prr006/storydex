@@ -4,27 +4,23 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, Search, X } from 'lucide-react'
+import { LayoutGrid, Menu, Search, X } from 'lucide-react'
 import { SettingsMenu } from '@/components/SettingsMenu'
-import { DURATION, EASE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
+import { DURATION, EASE } from '@/lib/motion'
 import type { Franchise } from '@/lib/franchise'
 
 /* ==========================================================================
    Masthead
    --------------------------------------------------------------------------
-   Identity · Library · Discover · Franchises · search · settings.
+   Compact and quiet on purpose: the artwork below it is the loudest thing on
+   the page, and a heavy navbar would compete with it.
 
-   Two decisions worth naming:
-
-   · **The library sentence lives in the header.** "312 entries · 58 stories ·
-     12 in progress" is set in one small line beside the wordmark, so the app
-     states its own scale on arrival without a single statistic card. When
-     there's no library, the line becomes the invitation instead of vanishing.
-
-   · **Search is a field, not a mode.** It's visible at all sizes (icon-only on
-     narrow screens), opens inline, and navigates to `/library?q=` rather than
-     keeping its own results panel. One search surface in the product, not two.
+   · A monogram tile plus the wordmark, then four destinations.
+   · Search is a real field that opens in place and hands off to `/library?q=`.
+   · The active route is marked with a soft indigo wash, not a border or a
+     shadow — it should be findable, not loud.
+   · Below `md` the destinations collapse into a sheet; nothing disappears.
    ========================================================================== */
 
 interface MastheadProps {
@@ -35,6 +31,7 @@ interface MastheadProps {
 }
 
 const NAV = [
+  { href: '/dashboard', label: 'Home' },
   { href: '/library', label: 'Library' },
   { href: '/discover', label: 'Discover' },
   { href: '/franchises', label: 'Franchises' },
@@ -45,10 +42,10 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // ⌘K / Ctrl-K focuses search. A small thing that makes it feel like software.
+  // ⌘K / Ctrl-K focuses search from anywhere.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -56,13 +53,15 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
         setSearchOpen(true)
         requestAnimationFrame(() => inputRef.current?.focus())
       }
-      if (event.key === 'Escape') setSearchOpen(false)
+      if (event.key === 'Escape') {
+        setSearchOpen(false)
+        setMenuOpen(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // A route change is the signal that the sheet has done its job.
   useEffect(() => setMenuOpen(false), [pathname])
 
   function submit(event: React.FormEvent) {
@@ -74,16 +73,22 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-rule bg-canvas">
-      <div className="shell flex h-16 items-center gap-6">
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas/80 backdrop-blur-xl">
+      <div className="shell flex h-[60px] items-center gap-6">
         {/* Identity */}
-        <Link href="/dashboard" className="flex shrink-0 items-baseline gap-2">
-          <span className="text-[1.0625rem] font-semibold tracking-[-0.02em] text-ink">
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
+          <span
+            className="grid size-7 place-items-center rounded-[9px] bg-gradient-to-br from-brand to-[#4b3ce0] art-edge"
+            aria-hidden
+          >
+            <LayoutGrid className="size-3.5 text-white" />
+          </span>
+          <span className="text-[0.9375rem] font-bold uppercase tracking-[0.14em] text-ink">
             StoryDex
           </span>
         </Link>
 
-        {/* Nav */}
+        {/* Destinations */}
         <nav className="hidden items-center gap-1 md:flex">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -91,23 +96,28 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative rounded-sm px-3 py-2 text-body transition-colors duration-150',
-                  active ? 'font-medium text-ink' : 'text-ink-2 hover:text-ink',
+                  'relative rounded-sm px-3 py-1.5 text-body transition-colors duration-200',
+                  active
+                    ? 'bg-brand-soft font-medium text-ink'
+                    : 'text-ink-2 hover:bg-white/[0.05] hover:text-ink',
                 )}
               >
                 {item.label}
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-[9px] h-[1.5px] bg-ink" aria-hidden />
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-3 -bottom-[9px] h-[2px] rounded-full bg-brand"
+                  />
                 )}
               </Link>
             )
           })}
         </nav>
 
-        {/* The one-line library statement — the only "statistics" in the product. */}
-        <p className="ml-1 hidden truncate text-small text-ink-3 lg:block">
-          <LibrarySentence franchises={franchises} username={username} />
+        <p className="ml-1 hidden truncate text-small text-ink-3 xl:block">
+          <LibrarySentence franchises={franchises} />
         </p>
 
         <div className="ml-auto flex items-center gap-2">
@@ -115,10 +125,10 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
           <form onSubmit={submit} className="relative">
             <div
               className={cn(
-                'flex items-center overflow-hidden rounded-sm border border-rule transition-all duration-200 ease-out',
+                'flex items-center overflow-hidden rounded-full border transition-all duration-300 ease-out',
                 searchOpen || query
-                  ? 'w-40 bg-field pl-2.5 sm:w-52'
-                  : 'w-9 justify-center border-transparent bg-transparent hover:border-rule hover:bg-sunk',
+                  ? 'w-44 border-line-strong bg-surface-2 pl-3 sm:w-72'
+                  : 'w-9 justify-center border-transparent bg-white/[0.04] hover:bg-white/[0.08]',
               )}
             >
               <button
@@ -143,20 +153,26 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
                 onBlur={() => {
                   if (!query) setSearchOpen(false)
                 }}
-                placeholder="Search"
+                placeholder="Search titles, arcs, entries"
                 aria-label="Search your library"
                 className={cn(
-                  'h-9 min-w-0 flex-1 bg-transparent px-2 text-body text-ink placeholder:text-ink-3 focus:outline-none',
+                  'h-9 min-w-0 flex-1 bg-transparent px-2.5 text-body text-ink placeholder:text-ink-3 focus:outline-none',
                   searchOpen || query ? 'block' : 'hidden',
                 )}
               />
+
+              {(searchOpen || query) && (
+                <span className="mr-2.5 hidden shrink-0 rounded-xs border border-line px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-3 sm:block">
+                  ⌘K
+                </span>
+              )}
 
               {query && searchOpen && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
                   aria-label="Clear search"
-                  className="mr-1 grid size-5 place-items-center rounded-xs text-ink-3 hover:text-ink"
+                  className="mr-1 grid size-6 place-items-center rounded-full text-ink-3 hover:text-ink"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
@@ -170,7 +186,7 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label="Sections"
-            className="grid size-9 place-items-center rounded-sm border border-transparent text-ink-2 transition-colors duration-150 hover:border-rule hover:bg-sunk hover:text-ink md:hidden"
+            className="grid size-9 place-items-center rounded-full border border-transparent text-ink-2 transition-colors duration-200 hover:bg-white/[0.06] hover:text-ink md:hidden"
           >
             {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
           </button>
@@ -184,9 +200,6 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
         </div>
       </div>
 
-      {/* Below md the three destinations move into a sheet rather than
-          disappearing: Library, Discover and Franchises have to be reachable
-          on a phone. */}
       <AnimatePresence>
         {menuOpen && (
           <motion.nav
@@ -195,20 +208,20 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: DURATION.overlay, ease: EASE }}
-            className="overflow-hidden border-t border-rule md:hidden"
+            className="overflow-hidden border-t border-line bg-surface md:hidden"
           >
             <ul className="shell flex flex-col py-2">
               {NAV.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (
-                  <li key={item.href} className="border-b border-rule last:border-b-0">
+                  <li key={item.href} className="border-b border-line last:border-b-0">
                     <Link
                       href={item.href}
-                      className={
-                        active
-                          ? 'flex items-baseline justify-between py-3 text-lead font-medium text-ink'
-                          : 'flex items-baseline justify-between py-3 text-lead text-ink-2'
-                      }
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'flex items-baseline justify-between py-3 text-lead',
+                        active ? 'font-semibold text-ink' : 'text-ink-2',
+                      )}
                     >
                       {item.label}
                       {active && <span className="text-small text-ink-3">Here</span>}
@@ -225,16 +238,10 @@ export function Masthead({ franchises, username, importedAt, onReimport }: Masth
 }
 
 /**
- * The header's single sentence. Three numbers, joined by middots, in prose
- * order — the way you'd say it out loud.
+ * The header's one line of statistics. Three numbers, in prose order — the way
+ * you'd say it out loud, not the way a dashboard would print it.
  */
-function LibrarySentence({
-  franchises,
-  username,
-}: {
-  franchises: Franchise[]
-  username: string | null
-}) {
+function LibrarySentence({ franchises }: { franchises: Franchise[] }) {
   if (franchises.length === 0) {
     return <>Nothing imported yet</>
   }
@@ -255,7 +262,6 @@ function LibrarySentence({
           <span className="num text-ink-2">{active}</span> in progress
         </>
       )}
-      {username && <span className="sr-only"> imported from AniList as {username}</span>}
     </>
   )
 }

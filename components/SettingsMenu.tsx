@@ -1,23 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Moon, Sun, Trash2, Upload } from 'lucide-react'
+import { Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DURATION, EASE } from '@/lib/motion'
 
 /* ==========================================================================
    SettingsMenu
    --------------------------------------------------------------------------
-   A popover, not a route. Four things live here and nothing else: theme,
-   re-import, storage disclosure, and destroying the local copy.
+   A popover, not a route. Four things live here and nothing else: the account,
+   re-import, the storage disclosure, and destroying the local copy.
 
-   The storage disclosure is deliberate product honesty. StoryDex keeps your
-   library in this browser only; a "Clear data" button that doesn't say that
-   is a trap, so the sentence sits *above* the button rather than in a footer.
+   The disclosure is deliberate product honesty. StoryDex keeps your library in
+   this browser only; a "Clear data" button that doesn't say that is a trap, so
+   the sentence sits above the button rather than in a footnote.
    ========================================================================== */
-
-const THEME_KEY = 'storydex:theme'
-type Theme = 'light' | 'dark'
 
 interface SettingsMenuProps {
   username: string | null
@@ -26,29 +25,28 @@ interface SettingsMenuProps {
   onReimport: () => void
 }
 
-export function SettingsMenu({ username, importedAt, franchiseCount, onReimport }: SettingsMenuProps) {
+export function SettingsMenu({
+  username,
+  importedAt,
+  franchiseCount,
+  onReimport,
+}: SettingsMenuProps) {
   const [open, setOpen] = useState(false)
-  const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
-  }, [])
-
-  function applyTheme(next: Theme) {
-    setTheme(next)
-    document.documentElement.dataset.theme = next
-    try {
-      localStorage.setItem(THEME_KEY, next)
-    } catch {
-      // Private mode. The theme still applies for this session.
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
   function clearData() {
     try {
       localStorage.removeItem('storydex:library:v1')
     } catch {
-      // Nothing to do — if storage is unavailable, there's nothing stored.
+      // Storage unavailable — nothing was stored to begin with.
     }
     window.dispatchEvent(new Event('storydex:library-updated'))
     setOpen(false)
@@ -63,15 +61,15 @@ export function SettingsMenu({ username, importedAt, franchiseCount, onReimport 
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Settings"
-        className="grid size-9 place-items-center rounded-sm border border-transparent text-ink-2 transition-colors duration-150 hover:border-rule hover:bg-sunk hover:text-ink"
+        aria-label="Account and settings"
+        className="flex items-center gap-2 rounded-full border border-transparent py-0.5 pl-0.5 pr-2.5 transition-colors duration-200 hover:bg-white/[0.06]"
       >
-        <span
-          className="grid size-6 place-items-center rounded-full bg-sunk text-[0.6875rem] font-semibold uppercase text-ink-2"
-          aria-hidden
-        >
+        <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-brand to-[#4b3ce0] text-[0.6875rem] font-bold uppercase text-white art-edge">
           {username ? username.slice(0, 1) : '·'}
         </span>
+        {username && (
+          <span className="hidden text-small font-medium text-ink-2 sm:block">{username}</span>
+        )}
       </button>
 
       <AnimatePresence>
@@ -80,18 +78,15 @@ export function SettingsMenu({ username, importedAt, franchiseCount, onReimport 
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
             <motion.div
               role="dialog"
-              aria-label="Settings"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-md border border-rule-strong bg-surface lift"
+              aria-label="Account and settings"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: DURATION.overlay, ease: EASE }}
+              className="absolute right-0 top-full z-50 mt-2.5 w-72 overflow-hidden rounded-md border border-line-strong bg-surface lift"
             >
-              {/* Account */}
-              <div className="border-b border-rule px-4 py-3.5">
-                <p className="text-micro font-semibold uppercase tracking-[0.08em] text-ink-3">
-                  AniList
-                </p>
+              <div className="border-b border-line px-4 py-3.5">
+                <p className="eyebrow">AniList</p>
                 {username ? (
                   <p className="mt-1.5 text-body text-ink">
                     <span className="font-medium">@{username}</span>
@@ -103,28 +98,17 @@ export function SettingsMenu({ username, importedAt, franchiseCount, onReimport 
                 {imported && <p className="mt-0.5 text-small text-ink-3">Imported {imported}</p>}
               </div>
 
-              {/* Theme */}
-              <div className="border-b border-rule px-4 py-3.5">
-                <p className="text-micro font-semibold uppercase tracking-[0.08em] text-ink-3">
-                  Appearance
-                </p>
-                <div className="mt-2 flex gap-1.5">
-                  <ThemeButton
-                    active={theme === 'light'}
-                    onClick={() => applyTheme('light')}
-                    icon={<Sun className="size-3.5" aria-hidden />}
-                    label="Paper"
-                  />
-                  <ThemeButton
-                    active={theme === 'dark'}
-                    onClick={() => applyTheme('dark')}
-                    icon={<Moon className="size-3.5" aria-hidden />}
-                    label="Night"
-                  />
-                </div>
+              <div className="border-b border-line px-4 py-3.5">
+                <Link
+                  href="/library"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between text-body text-ink-2 transition-colors hover:text-ink"
+                >
+                  Browse your library
+                  <span aria-hidden>→</span>
+                </Link>
               </div>
 
-              {/* Library */}
               <div className="px-4 py-3.5">
                 <button
                   type="button"
@@ -147,7 +131,10 @@ export function SettingsMenu({ username, importedAt, franchiseCount, onReimport 
                   <button
                     type="button"
                     onClick={clearData}
-                    className="mt-3 flex w-full items-center gap-2.5 text-body text-state-stopped transition-opacity hover:opacity-80"
+                    className={cn(
+                      'mt-3 flex w-full items-center gap-2.5 text-body transition-opacity hover:opacity-80',
+                    )}
+                    style={{ color: 'var(--state-stopped)' }}
                   >
                     <Trash2 className="size-4" aria-hidden />
                     Clear this library
@@ -159,35 +146,5 @@ export function SettingsMenu({ username, importedAt, franchiseCount, onReimport 
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-function ThemeButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'flex flex-1 items-center justify-center gap-2 rounded-sm border px-3 py-2 text-small font-medium transition-colors duration-150',
-        active
-          ? 'border-rule-strong bg-sunk text-ink'
-          : 'border-rule text-ink-2 hover:border-rule-strong hover:text-ink',
-      )}
-    >
-      {icon}
-      {label}
-      {active && <Check className="size-3 text-brand" aria-hidden />}
-    </button>
   )
 }

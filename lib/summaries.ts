@@ -1,5 +1,11 @@
 import type { Franchise } from './franchise'
-import { getEpisodeProgress, getEpisodeTotal, getStoryProgress } from './design'
+import {
+  canContinue,
+  getEpisodeProgress,
+  getEpisodeTotal,
+  getStoryPhase,
+  getStoryProgress,
+} from './design'
 
 /* ==========================================================================
    summaries — the small arithmetic behind the one-line statements
@@ -48,4 +54,33 @@ export function formatToday(date = new Date()): string {
 export function countWord(value: number): string {
   const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
   return words[value] ?? String(value)
+}
+
+/* --------------------------------------------------------------------------
+   Continue watching
+   --------------------------------------------------------------------------
+   The stories offered as "pick this up". A story qualifies when there is
+   something watchable left AND the user has actually begun it — either by
+   finishing an entry, or by being partway through one.
+
+   That second clause matters more than it looks: One Piece is 1,082 episodes
+   into a single AniList entry, which means zero *entries* completed but a very
+   long way in. Judging activity by entry count alone would hide it.
+   -------------------------------------------------------------------------- */
+
+export function continueWatching(list: Franchise[]): Franchise[] {
+  return list
+    .filter((franchise) => {
+      if (!canContinue(franchise)) return false
+      if (getStoryProgress(franchise).started) return true
+      return getEpisodeProgress(franchise).watched > 0
+    })
+    .sort((a, b) => {
+      const rank = (franchise: Franchise) => (getStoryPhase(franchise) === 'watching' ? 0 : 1)
+      return (
+        rank(a) - rank(b) ||
+        getStoryProgress(b).ratio - getStoryProgress(a).ratio ||
+        a.name.localeCompare(b.name)
+      )
+    })
 }

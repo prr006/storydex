@@ -1,185 +1,133 @@
 'use client'
 
-import Link from 'next/link'
 import { useLibraryContext } from '@/components/AppShell'
-import { Statement } from '@/components/Statement'
-import { ContinueList, continuableStories } from '@/components/ContinueRow'
-import { UpNextTable, upcomingRows } from '@/components/UpNextTable'
-import { LibraryBrowser } from '@/components/LibraryBrowser'
-import { CollectionSection } from '@/components/CollectionSection'
+import { StoryHero } from '@/components/StoryHero'
+import { MediaCard, PosterCard, StoryCollectionCard } from '@/components/Cards'
+import { Rail, RailSection } from '@/components/Rail'
+import { UpNextCard, upcomingEntries } from '@/components/UpNextRail'
 import { EmptyLibrary } from '@/components/EmptyLibrary'
-import { SectionHead } from '@/components/Chapter'
-import { getStoryProgress } from '@/lib/design'
-import { formatToday, libraryTotals } from '@/lib/summaries'
+import { continueWatching } from '@/lib/summaries'
 
 /* ==========================================================================
    Home — /dashboard
    --------------------------------------------------------------------------
-   Five blocks, in the order the questions get asked:
+   Five things, in the order the questions get asked:
 
-     1  Statement     where am I, in one sentence           (all numbers, once)
-     2  Continue      the primary action, one story per row
-     3  Up next       what exists but hasn't aired
-     4  Library       search · facets · sort · three densities
-     5  Franchises    the stories as shapes, grouped by lifecycle
+     1  Hero          the story you are inside, artwork-led, one action
+     2  Continue      every other active story as a large artwork card
+     3  Up next       queued, paused and not-yet-aired — compact
+     4  Your library  the poster grid
+     5  Franchises    the stories as collections
 
-   Statistics appear in exactly one place — the statement — and never as a
-   card, ring, ledger or sparkline. The page is a list of stories, not a
-   report about them.
+   The page opens on artwork rather than on a sentence about the user. The
+   numbers are still here — but they are *on* the hero, attached to the story
+   they describe, instead of floating above the page as a header statistic.
    ========================================================================== */
 
 export default function DashboardPage() {
   const { library, openImport } = useLibraryContext()
   const { franchises, loading, isImported } = library
 
-  if (loading) {
-    return <HomeLoading />
-  }
+  if (loading) return <HomeLoading />
 
   if (!isImported || franchises.length === 0) {
     return <EmptyLibrary onImport={openImport} />
   }
 
-  const continuable = continuableStories(franchises)
-  const upcoming = upcomingRows(franchises)
-  const totals = libraryTotals(franchises)
-  const lead = continuable[0]
+  const active = continueWatching(franchises)
+  const hero = active[0] ?? null
+  const rest = active.slice(1)
+  const queued = upcomingEntries(franchises, hero?.id)
+  const recent = [...franchises]
+    .sort((a, b) => b.seasons.length - a.seasons.length || a.name.localeCompare(b.name))
+    .slice(0, 14)
+  const collections = [...franchises]
+    .sort((a, b) => b.seasons.length - a.seasons.length || a.name.localeCompare(b.name))
+    .slice(0, 6)
 
   return (
-    <div className="shell pb-24 pt-14">
-      {/* 1 — Where am I */}
-      <Statement
-        date={formatToday()}
-        figures={[
-          { label: 'stories', value: String(franchises.length) },
-          { label: 'in progress', value: String(totals.active) },
-          { label: 'entries watched', value: `${totals.watched}/${totals.entries}` },
-        ]}
-      >
-        {lead ? (
-          <>
-            {`You’re ${getStoryProgress(lead).completed} entries into `}
-            <Link
-              href={`/franchise/${lead.id}`}
-              className="underline decoration-rule-strong decoration-1 underline-offset-[6px] transition-colors hover:decoration-brand"
-            >
-              {lead.name}
-            </Link>
-            .
-          </>
-        ) : (
-          <>Your collection, and exactly where you are in it.</>
+    <div className="pb-24">
+      {hero && <StoryHero franchise={hero} />}
+
+      <div className="shell">
+        {rest.length > 0 && (
+          <RailSection
+            title="Continue watching"
+            meta={`${rest.length} ${rest.length === 1 ? 'story' : 'stories'} in progress`}
+            action={{ href: '/library?status=watching', label: 'See all' }}
+            className="mt-14"
+          >
+            <Rail itemWidth={340}>
+              {rest.map((franchise, index) => (
+                <MediaCard key={franchise.id} franchise={franchise} index={index} />
+              ))}
+            </Rail>
+          </RailSection>
         )}
-      </Statement>
 
-      {/* 2 — Continue */}
-      {continuable.length > 0 && (
-        <Section
-          id="continue"
-          title="Continue"
-          lead="One row per story you are somewhere inside. Ordered by how little is left."
+        {queued.length > 0 && (
+          <RailSection
+            title="Up next"
+            meta="Queued, paused and not yet aired"
+            className="mt-14"
+          >
+            <Rail itemWidth={280}>
+              {queued.slice(0, 12).map((row, index) => (
+                <UpNextCard
+                  key={`${row.franchise.id}-${row.entry.id}`}
+                  franchise={row.franchise}
+                  entry={row.entry}
+                  reason={row.reason}
+                  index={index}
+                />
+              ))}
+            </Rail>
+          </RailSection>
+        )}
+
+        <RailSection
+          title="Your library"
+          meta={`${franchises.length} ${franchises.length === 1 ? 'story' : 'stories'}`}
+          action={{ href: '/library', label: 'Browse all' }}
+          className="mt-14"
         >
-          <ContinueList franchises={continuable.slice(0, 6)} />
-          {continuable.length > 6 && (
-            <p className="mt-6">
-              <Link
-                href="/library?status=watching"
-                className="text-body font-medium text-brand-text underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
-              >
-                {continuable.length - 6} more in progress
-              </Link>
-            </p>
-          )}
-        </Section>
-      )}
+          <div className="grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+            {recent.map((franchise, index) => (
+              <PosterCard key={franchise.id} franchise={franchise} index={index} />
+            ))}
+          </div>
+        </RailSection>
 
-      {/* 3 — Up next */}
-      {upcoming.length > 0 && (
-        <Section id="up-next" title="Up next" lead="Airing later — kept separate from Continue.">
-          <UpNextTable franchises={franchises} />
-        </Section>
-      )}
-
-      {/* 4 — Library */}
-      <Section
-        title="Your library"
-        lead="Search, narrow by status, format or genre, then choose how densely you want to read it."
-        action={
-          <Link
-            href="/library"
-            className="text-body font-medium text-brand-text underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
-          >
-            Open the library
-          </Link>
-        }
-        className="mt-20"
-      >
-        <LibraryBrowser franchises={franchises} variant="compact" limit={10} defaults={{ density: 'grid' }} />
-      </Section>
-
-      {/* 5 — Franchises */}
-      <Section
-        title="Franchises"
-        lead="Every story as a shape: seasons, films, OVAs and specials, grouped by where you are with them."
-        action={
-          <Link
-            href="/franchises"
-            className="text-body font-medium text-brand-text underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
-          >
-            All collections
-          </Link>
-        }
-        className="mt-20"
-      >
-        <CollectionSection franchises={franchises.slice(0, 24)} />
-      </Section>
+        <RailSection
+          title="Franchises"
+          meta="Stories grouped across seasons, films and specials"
+          action={{ href: '/franchises', label: 'All collections' }}
+          className="mt-16"
+        >
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {collections.map((franchise, index) => (
+              <StoryCollectionCard key={franchise.id} franchise={franchise} index={index} />
+            ))}
+          </div>
+        </RailSection>
+      </div>
     </div>
   )
 }
 
 /* -------------------------------------------------------------------------- */
 
-function Section({
-  title,
-  lead,
-  action,
-  children,
-  className,
-  id,
-}: {
-  title: string
-  lead?: string
-  action?: React.ReactNode
-  children: React.ReactNode
-  className?: string
-  id?: string
-}) {
-  return (
-    <section id={id} className={`scroll-mt-24 section-rule mt-16 pt-10 ${className ?? ''}`}>
-      <SectionHead title={title} lead={lead} action={action} />
-      <div className="mt-8">{children}</div>
-    </section>
-  )
-}
-
 function HomeLoading() {
   return (
-    <div className="shell pb-24 pt-8">
-      <div className="section-rule pt-8">
-        <div className="h-3 w-28 animate-pulse rounded-xs bg-sunk" />
-        <div className="mt-5 h-12 w-full max-w-xl animate-pulse rounded-sm bg-sunk" />
-      </div>
-      <div className="mt-16 space-y-6">
-        {[0, 1, 2].map((row) => (
-          <div key={row} className="flex gap-6 border-b border-rule pb-6">
-            <div className="h-[108px] w-[72px] animate-pulse rounded-md bg-sunk" />
-            <div className="flex-1 space-y-3 pt-1">
-              <div className="h-5 w-1/2 animate-pulse rounded-xs bg-sunk" />
-              <div className="h-3 w-1/3 animate-pulse rounded-xs bg-sunk" />
-              <div className="h-2 w-2/3 animate-pulse rounded-xs bg-sunk" />
-            </div>
-          </div>
-        ))}
+    <div>
+      <div className="h-[clamp(24rem,58vh,40rem)] w-full animate-pulse bg-surface" />
+      <div className="shell mt-14">
+        <div className="h-7 w-52 animate-pulse rounded-sm bg-surface-2" />
+        <div className="mt-4 flex gap-4 overflow-hidden">
+          {[0, 1, 2, 3].map((card) => (
+            <div key={card} className="h-[190px] w-[330px] shrink-0 animate-pulse rounded-md bg-surface-2" />
+          ))}
+        </div>
       </div>
     </div>
   )

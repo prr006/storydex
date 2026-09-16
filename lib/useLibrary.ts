@@ -21,7 +21,7 @@ export interface LibraryState {
  * app comes from a real AniList list that the user imported, which means the
  * empty state is a genuine state the UI has to handle well rather than a
  * placeholder to be papered over. Screens that would otherwise look bare before
- * an import (the landing page, the empty dashboard) pull live trending artwork
+ * an import (the welcome page, the empty dashboard) pull live trending artwork
  * from AniList instead — real data, no bundled assets.
  */
 export function useLibrary(): LibraryState {

@@ -1,29 +1,27 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Cover } from '@/components/Cover'
+import { Plus } from 'lucide-react'
+import { Cover, FormatMark } from '@/components/Cover'
 import { useSpotlight } from '@/lib/useSpotlight'
-import { DURATION, EASE } from '@/lib/motion'
+import { EASE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 /* ==========================================================================
    EmptyLibrary
    --------------------------------------------------------------------------
    A real state, not a placeholder. There is no bundled sample library and no
-   generated artwork anywhere in this product, so this screen has to be good
-   enough to be the first thing anyone sees.
+   generated artwork anywhere in this product, so this screen has to be worth
+   arriving at — it is also what every first-time user sees.
 
-   It does three things and stops:
-     1. says what StoryDex does, in one serif paragraph;
-     2. offers the one action (import);
-     3. shows real, live AniList covers — the actual catalogue this app reads
-        from — clearly labelled as trending, never passed off as your library.
+   It leans on real, live AniList covers rather than describing the product in
+   the abstract: the catalogue StoryDex reads from *is* the sales pitch, and it
+   is honestly labelled as trending, never passed off as your library.
    ========================================================================== */
 
 interface EmptyLibraryProps {
   onImport: () => void
   className?: string
-  /** `page` fills a route; `section` sits inside one. */
   variant?: 'page' | 'section'
 }
 
@@ -35,30 +33,31 @@ export function EmptyLibrary({ onImport, className, variant = 'page' }: EmptyLib
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: DURATION.enter, ease: EASE }}
+      transition={{ duration: 0.5, ease: EASE }}
       className={cn(variant === 'page' ? 'shell pt-16 pb-24' : '', className)}
     >
-      <div className="max-w-[68ch]">
+      <div className="max-w-[64ch]">
         <p className="eyebrow">Your collection is empty</p>
-        <h1 className="mt-4 text-display font-semibold text-ink">
+        <h1 className="mt-4 text-display font-bold text-ink">
           A list tells you what you finished.
           <br />
           <span className="text-ink-2">StoryDex tells you where you are in the story.</span>
         </h1>
-        <p className="reading mt-6 max-w-[58ch] text-ink-2">
-          Import a public AniList list and every season, film, OVA and special you&rsquo;ve watched
-          gets regrouped into the franchise it belongs to — so Re:ZERO reads as one story with four
-          entries rather than four unrelated rows.
+        <p className="mt-6 max-w-[54ch] text-body text-ink-2">
+          Import a public AniList list and every season, film, OVA and special you&rsquo;ve watched is
+          regrouped into the franchise it belongs to — so a story reads as one story with six
+          entries, not six unrelated rows.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
           <button
             type="button"
             onClick={onImport}
-            className="inline-flex h-11 items-center rounded-sm bg-brand px-5 text-body font-medium text-brand-ink transition-opacity hover:opacity-90"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-brand px-5 text-body font-semibold text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-brand-strong"
           >
+            <Plus className="size-4" aria-hidden />
             Import from AniList
           </button>
           <p className="text-small text-ink-3">
@@ -67,58 +66,77 @@ export function EmptyLibrary({ onImport, className, variant = 'page' }: EmptyLib
         </div>
       </div>
 
-      {/* ── What you get, as three statements ───────────────────────────── */}
-      <ol className="mt-16 grid gap-x-10 gap-y-8 border-t border-rule pt-8 sm:grid-cols-2 lg:grid-cols-3">
+      {/* What you get, as three statements. */}
+      <ol className="mt-16 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
         {[
           {
             n: '01',
             title: 'Stories, not rows',
-            body: 'AniList relations are followed to their ends, so prequels, sequels, films and OVAs land in one place.',
+            body: 'AniList relations are followed to their ends, so prequels, sequels, films and OVAs land in one collection.',
           },
           {
             n: '02',
-            title: 'One ruler per story',
-            body: 'Progress is drawn as one block per entry, so “3 of 4” is countable instead of estimated.',
+            title: 'One timeline per story',
+            body: 'Every entry becomes a milestone with its own artwork, so a franchise reads as a journey rather than a list.',
           },
           {
             n: '03',
-            title: 'Always a next entry',
-            body: 'Not-yet-aired entries are separated from things you can actually watch, so Continue never lies.',
+            title: 'Always a next episode',
+            body: 'Not-yet-aired entries are kept apart from things you can watch, so Continue never lies to you.',
           },
-        ].map((item) => (
-          <li key={item.n}>
-            <span className="num text-small text-ink-3">{item.n}</span>
-            <h2 className="mt-2 text-lead font-semibold text-ink">{item.title}</h2>
-            <p className="mt-2 max-w-[42ch] text-body text-ink-2">{item.body}</p>
-          </li>
+        ].map((item, index) => (
+          <motion.li
+            key={item.n}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 + index * 0.06, ease: EASE }}
+            className="rounded-md border border-line bg-surface p-5"
+          >
+            <span className="num text-small font-semibold" style={{ color: 'var(--brand-strong)' }}>
+              {item.n}
+            </span>
+            <h2 className="mt-2 text-card font-semibold text-ink">{item.title}</h2>
+            <p className="mt-2 text-body text-ink-3">{item.body}</p>
+          </motion.li>
         ))}
       </ol>
 
-      {/* ── Real AniList artwork, honestly labelled ─────────────────────── */}
+      {/* Real AniList artwork, honestly labelled. */}
       {covers.length > 0 && (
-        <div className="mt-20 border-t border-rule pt-8">
-          <div className="flex items-baseline justify-between gap-6">
-            <p className="eyebrow">Trending on AniList right now</p>
-            <p className="hidden text-small text-ink-3 sm:block">
-              Live from the API this app reads
-            </p>
+        <div className="mt-20">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <h2 className="text-head font-bold text-ink">Trending on AniList</h2>
+            <p className="text-small text-ink-3">Live from the API this app reads</p>
           </div>
 
-          <ul className="mt-6 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
-            {covers.slice(0, 6).map((media, index) => {
+          <ul className="mt-6 grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-5 lg:grid-cols-7">
+            {covers.slice(0, 7).map((media, index) => {
               const title = media.title.english ?? media.title.romaji ?? media.title.native ?? ''
               return (
-                <li key={media.id} className="opacity-95">
+                <motion.li
+                  key={media.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.05 + index * 0.04, ease: EASE }}
+                  className={cn('group/art', index > 4 && 'hidden sm:block lg:block')}
+                >
                   <Cover
                     src={media.coverImage?.extraLarge ?? media.coverImage?.large}
                     alt={title}
                     tint={media.coverImage?.color}
-                    ratio="4/5"
-                    sizes="(max-width: 640px) 30vw, 16vw"
-                    className={cn(index > 3 && 'hidden sm:block')}
+                    ratio="2/3"
+                    hoverZoom
+                    focus="upper"
+                    sizes="(max-width: 640px) 30vw, 14vw"
+                    className="transition-transform duration-300 ease-out group-hover/art:-translate-y-1"
                   />
-                  <p className="clamp-2 mt-2.5 text-small text-ink-2">{title}</p>
-                </li>
+                  <h3 className="clamp-2 mt-2.5 text-small font-semibold leading-snug text-ink">
+                    {title}
+                  </h3>
+                  <div className="mt-1.5">
+                    <FormatMark format={media.format ?? undefined} />
+                  </div>
+                </motion.li>
               )
             })}
           </ul>

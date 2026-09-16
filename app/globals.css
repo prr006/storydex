@@ -1,256 +1,209 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /* ==========================================================================
-   STORYDEX — "THE CATALOGUE"
+   StoryDex — "Personal Universe"
    --------------------------------------------------------------------------
-   A printed catalogue of a personal collection. Warm paper, ink, one green,
-   one rust. Depth comes from rules and tinted panels, never from glow.
+   A dark, cinematic foundation for a personal anime library.
 
-   Two complete themes, both semantic. No component names a hex value; they
-   name a role (canvas / surface / ink / rule / brand / current), and the role
-   resolves per theme below.
+   Three rules hold the whole system together:
+
+   1. ARTWORK IS THE LIGHT SOURCE.
+      The interface is near-black so that AniList artwork — covers, banners,
+      key visuals — is the brightest thing on screen. Surfaces are dark greys,
+      never grey-blue boxes competing with the art.
+
+   2. ONE IDENTITY ACCENT, MANY STORY ACCENTS.
+      Indigo is StoryDex's own voice: navigation, primary actions, the app's
+      chrome. Every *story* also carries its own accent taken from its AniList
+      `coverImage.color`, applied through the `--accent` custom property, so a
+      progress bar, a timeline node or a card edge can belong to the story it
+      describes without turning the app into a rainbow.
+
+   3. PROGRESS IS A FIRST-CLASS VISUAL.
+      Bars are 3–4px, rounded, accent-filled, and always paired with a number.
+      They are never decoration and never a database field.
    ========================================================================== */
 
-@theme inline {
-  /* --- Fonts -------------------------------------------------------------
-     Instrument Sans: interface + titles. Newsreader: prose.
-     Linked from app/layout.tsx so the build has no network dependency. */
+@theme {
+  /* ── Type ───────────────────────────────────────────────────────────── */
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-serif: 'Newsreader', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
 
-  /* --- Semantic roles (flip per theme) ---------------------------------- */
+  --text-micro: 0.6875rem; /* 11px — eyebrows, tracked, ~one per section */
+  --text-micro--line-height: 1.2;
+  --text-micro--letter-spacing: 0.1em;
+
+  --text-small: 0.8125rem; /* 13px — metadata, table headers */
+  --text-small--line-height: 1.45;
+
+  --text-body: 0.90625rem; /* 14.5px */
+  --text-body--line-height: 1.55;
+
+  --text-card: 0.9375rem; /* 15px — card titles */
+  --text-card--line-height: 1.35;
+
+  --text-lead: 1.0625rem; /* 17px */
+  --text-lead--line-height: 1.5;
+
+  --text-title: 1.375rem; /* 22px */
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.015em;
+
+  --text-head: 1.75rem; /* 28px — section titles */
+  --text-head--line-height: 1.15;
+  --text-head--letter-spacing: -0.022em;
+
+  --text-display: clamp(2.25rem, 4.6vw, 3.5rem); /* page titles */
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.03em;
+
+  --text-hero: clamp(2.5rem, 6vw, 4.75rem); /* the one hero per screen */
+  --text-hero--line-height: 0.98;
+  --text-hero--letter-spacing: -0.035em;
+
+  /* ── Space & shape ──────────────────────────────────────────────────── */
+  --spacing-shell: clamp(1.25rem, 4vw, 3rem);
+  --container-content: 1440px;
+  --container-read: 68ch;
+
+  --radius-xs: 0.5rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-enter: enter 0.32s var(--ease-out) both;
+
+  /* ── Colour roles ───────────────────────────────────────────────────── */
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
-  --color-sunk: var(--sunk);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
-  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
 
   --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
-  --color-brand-tint: var(--brand-tint);
-  --color-brand-text: var(--brand-text);
 
-  /* Status roles. One system, used at every size. */
-  --color-state-progress: var(--state-progress);
   --color-state-done: var(--state-done);
-  --color-state-caughtup: var(--state-caughtup);
-  --color-state-idle: var(--state-idle);
+  --color-state-progress: var(--state-progress);
+  --color-state-upcoming: var(--state-upcoming);
+  --color-state-planned: var(--state-planned);
   --color-state-paused: var(--state-paused);
   --color-state-stopped: var(--state-stopped);
-  --color-state-planned: var(--state-planned);
+  --color-state-idle: var(--state-idle);
 
-  --color-current: var(--state-progress);
-  --color-done: var(--state-done);
+  /* Aliases kept so a component can never reference a token that vanished. */
+  --color-rule: var(--line);
+  --color-rule-strong: var(--line-strong);
+  --color-sunk: var(--surface-3);
+  --color-field: var(--surface-2);
+  --color-brand-tint: var(--brand-soft);
+  --color-brand-text: var(--brand-strong);
 
-  /* --- Back-compat: the generic ui/button primitive still references these */
   --color-background: var(--canvas);
   --color-foreground: var(--ink);
-  --color-card: var(--surface);
-  --color-card-foreground: var(--ink);
-  --color-popover: var(--surface);
-  --color-popover-foreground: var(--ink);
-  --color-primary: var(--brand);
-  --color-primary-foreground: var(--brand-ink);
-  --color-secondary: var(--sunk);
-  --color-secondary-foreground: var(--ink);
-  --color-muted: var(--sunk);
-  --color-muted-foreground: var(--ink-3);
-  --color-accent: var(--sunk);
-  --color-accent-foreground: var(--ink);
-  --color-destructive: var(--state-stopped);
-  --color-border: var(--rule);
-  --color-input: var(--rule);
+  --color-border: var(--line);
   --color-ring: var(--brand);
 }
 
-@theme {
-  /* ========================================================================
-     TYPE SCALE
-     Two families, two jobs. Smallest content size is 12.5px — the previous
-     11px mono-label layer is gone.
-     ======================================================================== */
-  --text-micro: 0.6875rem;   /* 11px — uppercase eyebrows, ~once per screen */
-  --text-micro--line-height: 1.2;
-  --text-micro--letter-spacing: 0.08em;
-
-  --text-small: 0.78125rem;  /* 12.5px — meta, table headers */
-  --text-small--line-height: 1.45;
-
-  --text-body: 0.90625rem;   /* 14.5px */
-  --text-body--line-height: 1.55;
-
-  --text-reading: 1rem;      /* 16px — serif prose */
-  --text-reading--line-height: 1.7;
-
-  --text-lead: 1.125rem;     /* 18px — serif statements */
-  --text-lead--line-height: 1.6;
-
-  --text-title: 1.375rem;    /* 22px */
-  --text-title--line-height: 1.25;
-  --text-title--letter-spacing: -0.012em;
-
-  --text-head: 1.875rem;     /* 30px */
-  --text-head--line-height: 1.15;
-  --text-head--letter-spacing: -0.018em;
-
-  --text-display: clamp(2.125rem, 4.5vw, 3.25rem);
-  --text-display--line-height: 1.06;
-  --text-display--letter-spacing: -0.022em;
-
-  --text-mega: clamp(2.75rem, 7vw, 5rem);
-  --text-mega--line-height: 0.98;
-  --text-mega--letter-spacing: -0.03em;
-
-  /* ========================================================================
-     LAYOUT
-     ======================================================================== */
-  --spacing-shell: clamp(1.25rem, 4vw, 2.75rem);
-  --container-content: 1240px;
-  --container-read: 68ch;
-
-  --radius-xs: 0.25rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-
-  /* ========================================================================
-     MOTION — calm. Entrances explain a change, then stop.
-     ======================================================================== */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-
-  --animate-enter: enter 0.24s var(--ease-out) both;
-  @keyframes enter {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
-
 /* ==========================================================================
-   THEMES
+   THEME — one deliberate dark theme
+   --------------------------------------------------------------------------
+   Near-black with a trace of blue so pure-black artwork edges still separate
+   from the page. Three surface steps, each of which must be distinguishable
+   from the one below it at a glance on a good monitor and a bad one.
    ========================================================================== */
 
-:root {
-  color-scheme: light;
-
-  /* “Paper” — the default. Warm, printed, high-key. */
-  --canvas: #f4f1eb;
-  --surface: #ffffff;
-  --sunk: #ede9e1;
-  --field: #ffffff;
-
-  --ink: #1b1a17;
-  --ink-2: #5a564e;
-  --ink-3: #8b857a;
-
-  --rule: #e2ddd3;
-  --rule-strong: #cfc8ba;
-
-  --brand: #1d5647;
-  --brand-ink: #ffffff;
-  --brand-tint: #e3efe9;
-  --brand-text: #17493c;
-
-  --state-progress: #a8462a; /* clay — “you are here”, the only warm accent */
-  --state-done: #1d5647; /* pine — finished */
-  --state-caughtup: #3f6377; /* blue-slate — nothing left that exists */
-  --state-idle: #a8a196; /* not started */
-  --state-paused: #8a8175;
-  --state-stopped: #8e3b34;
-  --state-planned: #9a7328; /* ochre — planned */
-
-  --radius: 0.625rem;
-}
-
+:root,
 [data-theme='dark'] {
+  /* Ground */
+  --canvas: #08090c;
+  --surface: #0e1015;
+  --surface-2: #14171d;
+  --surface-3: #1b1f27;
+
+  /* Text */
+  --ink: #f3f5f9;
+  --ink-2: #a8b0c0;
+  --ink-3: #6d7583;
+
+  /* Edges — light, not grey, so they read as a lit rim on dark panels */
+  --line: rgb(255 255 255 / 0.07);
+  --line-strong: rgb(255 255 255 / 0.13);
+
+  /* StoryDex's own voice */
+  --brand: #6d5cff;
+  --brand-strong: #9d91ff;
+  --brand-soft: rgb(109 92 255 / 0.16);
+  --brand-ink: #ffffff;
+
+  /* Story states */
+  --state-done: #3ddc97; /* finished */
+  --state-progress: #7b6bff; /* you are here */
+  --state-upcoming: #f0b429; /* announced, not aired */
+  --state-planned: #63a4ff; /* on the list, not started */
+  --state-caughtup: #63a4ff; /* nothing left that exists yet */
+  --state-paused: #8b93a3;
+  --state-stopped: #f2707f;
+  --state-idle: #6d7583;
+
+  /* Per-story accent. Every card, bar and node reads from these two, and
+     anything that doesn't set them inherits StoryDex indigo. */
+  --accent: var(--brand);
+  --accent-strong: var(--brand-strong);
+  --accent-soft: var(--brand-soft);
+
+  /* Depth */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.55), 0 28px 60px -28px rgb(0 0 0 / 0.95);
+
   color-scheme: dark;
-
-  /* “Night” — warm charcoal. Deliberately not navy, not violet. */
-  --canvas: #131210;
-  --surface: #1b1a16;
-  --sunk: #24221c;
-  --field: #201f1a;
-
-  --ink: #f3f0e9;
-  --ink-2: #b4ada0;
-  --ink-3: #877f72;
-
-  --rule: #2c2a23;
-  --rule-strong: #423f35;
-
-  --brand: #8fbfb0;
-  --brand-ink: #12211c;
-  --brand-tint: #1c2a25;
-  --brand-text: #a6d0c3;
-
-  --state-progress: #d9774e;
-  --state-done: #7fc9ac;
-  --state-caughtup: #8fb6cc;
-  --state-idle: #7a7266;
-  --state-paused: #8a8175;
-  --state-stopped: #d0817a;
-  --state-planned: #c9a25c;
 }
 
-/* ==========================================================================
-   BASE
-   ========================================================================== */
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--canvas);
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
 
 @layer base {
-  * {
-    border-color: var(--rule);
-  }
-
-  html {
-    background-color: var(--canvas);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
-  }
-
-  body {
-    background-color: var(--canvas);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--text-body);
-    line-height: 1.55;
-    font-feature-settings: 'ss01', 'cv05';
-  }
-
-  /* Headings are Instrument Sans at weight, not a second typeface. */
-  h1,
-  h2,
-  h3,
-  h4 {
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    color: var(--ink);
-  }
-
-  ::selection {
-    background: color-mix(in oklab, var(--brand) 22%, transparent);
-    color: var(--ink);
-  }
-
+  /* One focus ring for the entire app, so no component can lose its keyboard
+     affordance by forgetting to add one. */
   :focus-visible {
-    outline: 2px solid var(--brand);
+    outline: 2px solid var(--brand-strong);
     outline-offset: 2px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
   }
 
-  /* Numerals never jitter — tabular, in the same family as the text. */
+  /* Images never animate on their own; only in response to the pointer. */
+  img {
+    -webkit-user-drag: none;
+  }
+
   .num {
     font-variant-numeric: tabular-nums;
   }
@@ -261,15 +214,6 @@
   }
   .rail::-webkit-scrollbar {
     display: none;
-  }
-
-  /* One focus ring for the whole app, so nothing can opt out of it by
-     forgetting to add a replacement. Keyboard users get the same care as
-     pointer users without any component opting in. */
-  :focus-visible {
-    outline: 2px solid var(--brand);
-    outline-offset: 2px;
-    border-radius: var(--radius-xs);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -284,11 +228,22 @@
   }
 }
 
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ==========================================================================
    UTILITIES
    ========================================================================== */
 
-/** The content column. Narrower than the old 1400px, so type reads editorially. */
+/** The content column. Wide — 1440px — because artwork needs room. */
 @utility shell {
   width: 100%;
   max-width: var(--container-content);
@@ -296,54 +251,81 @@
   padding-inline: var(--spacing-shell);
 }
 
-/** The uppercase eyebrow. Budget: one per screen. */
+/** The uppercase eyebrow above a title. */
 @utility eyebrow {
   font-size: var(--text-micro);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
   line-height: 1.2;
 }
 
-/** Serif prose. The reading voice — synopses, statements, empty states. */
-@utility reading {
-  font-family: var(--font-serif);
-  font-size: var(--text-reading);
-  line-height: 1.7;
-  font-weight: 400;
-  letter-spacing: 0;
-}
-
-@utility reading-lead {
-  font-family: var(--font-serif);
-  font-size: var(--text-lead);
-  line-height: 1.6;
-  font-weight: 400;
-}
-
-/** A hairline. Rules do the grouping in this design. */
-@utility hairline {
-  border-bottom: 1px solid var(--rule);
-}
-
-/** One shadow in the whole system: 2px of lift on card hover. */
-@utility lift {
-  box-shadow: 0 1px 2px rgba(27, 26, 23, 0.06), 0 8px 20px -12px rgba(27, 26, 23, 0.22);
-}
-
-/** Figures that sit in columns must not jitter as they change. */
+/** Tabular figures, for anything that sits in a column or counts up. */
 @utility num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }
 
-/** The 1px rule that opens a section, with its breathing room. */
-@utility section-rule {
-  border-top: 1px solid var(--rule);
+/** A panel: the default raised surface for content that isn't artwork. */
+@utility panel {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
 
-/** Clamp helpers for titles that must stay to two lines. */
+/** The only shadow in the system, for artwork that lifts on hover. */
+@utility lift {
+  box-shadow: var(--shadow-lift);
+}
+
+@utility card-shadow {
+  box-shadow: var(--shadow-card);
+}
+
+/** A lit rim on artwork, so a dark cover still separates from the page. */
+@utility art-edge {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+/**
+ * The scrim that lets type sit on artwork.
+ * Two layers: a bottom fade into the page, and a left vignette for the
+ * copy column. Deliberately restrained — enough contrast to read, never so
+ * much that the artwork is lost.
+ */
+@utility scrim-card {
+  background: linear-gradient(
+    to top,
+    rgb(5 6 9 / 0.94) 0%,
+    rgb(5 6 9 / 0.78) 34%,
+    rgb(5 6 9 / 0.12) 68%,
+    transparent 100%
+  );
+}
+
+@utility scrim-hero {
+  background:
+    linear-gradient(
+      to right,
+      var(--canvas) 0%,
+      color-mix(in srgb, var(--canvas) 88%, transparent) 22%,
+      color-mix(in srgb, var(--canvas) 45%, transparent) 48%,
+      transparent 78%
+    ),
+    linear-gradient(
+      to top,
+      var(--canvas) 0%,
+      color-mix(in srgb, var(--canvas) 72%, transparent) 18%,
+      transparent 58%
+    );
+}
+
+@utility scrim-bottom {
+  background: linear-gradient(to top, var(--canvas) 0%, color-mix(in srgb, var(--canvas) 60%, transparent) 40%, transparent 100%);
+}
+
+/** Clamp helpers. */
 @utility clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -356,4 +338,9 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/** A 1px rule that opens a section. */
+@utility section-rule {
+  border-top: 1px solid var(--line);
 }

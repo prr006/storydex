@@ -53,27 +53,24 @@ export const DEFAULT_FILTERS: LibraryFilters = {
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'closest', label: 'Closest to finishing' },
-  { value: 'progress', label: 'Progress' },
+  { value: 'progress', label: 'Most progress' },
   { value: 'longest', label: 'Most entries' },
   { value: 'episodes', label: 'Most episodes' },
-  { value: 'newest', label: 'Recently released' },
+  { value: 'newest', label: 'Newest first' },
   { value: 'oldest', label: 'Oldest first' },
   { value: 'title', label: 'Title A–Z' },
 ]
 
 export const STATUS_FACETS: { value: StatusFacet; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'watching', label: 'In progress' },
-  { value: 'caught-up', label: 'Caught up' },
-  { value: 'complete', label: 'Finished' },
-  { value: 'backlog', label: 'Not started' },
+  { value: 'watching', label: 'Watching' },
+  { value: 'complete', label: 'Completed' },
+  { value: 'paused', label: 'On hold' },
   { value: 'planned', label: 'Planned' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'dropped', label: 'Stopped' },
 ]
 
 export const FORMAT_FACETS: { value: FormatFacet; label: string }[] = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All formats' },
   { value: 'TV', label: 'TV' },
   { value: 'MOVIE', label: 'Films' },
   { value: 'OVA', label: 'OVA' },

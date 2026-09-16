@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Franchise, Season } from './franchise'
 
 /* ==========================================================================
@@ -8,11 +9,16 @@ import type { Franchise, Season } from './franchise'
 
    Colour logic (deliberate, and the core of the system):
      ink greys = chrome. Never a status.
-     pine      = finished
-     clay      = YOU ARE HERE — the single warm accent in the product
-     ochre     = planned later
-     blue-slate= caught up (nothing left that exists yet)
-     grey      = not released / not started
+     emerald   = finished
+     indigo    = YOU ARE HERE (or the story's own artwork accent)
+     amber     = announced, not aired yet
+     blue      = on the list, not started
+     red       = walked away from
+
+   StoryDex has its own accent (indigo), and every story also carries one taken
+   from its AniList artwork. `accentVars()` is how a component adopts a story's
+   accent without naming a hex value: it returns the CSS custom properties that
+   `--accent`-aware utilities and inline styles read.
    ========================================================================== */
 
 export type EntryStatus =
@@ -38,12 +44,12 @@ export interface StatusVisual {
 }
 
 const STATUS_VISUALS: Record<EntryStatus, StatusVisual> = {
-  watched: { label: 'Watched', tag: 'WATCHED', color: 'var(--state-done)', dim: false, live: false },
+  watched: { label: 'Completed', tag: 'DONE', color: 'var(--state-done)', dim: false, live: false },
   watching: { label: 'Watching', tag: 'WATCHING', color: 'var(--state-progress)', dim: false, live: true },
   planned: { label: 'Planned', tag: 'PLANNED', color: 'var(--state-planned)', dim: true, live: false },
-  upcoming: { label: 'Not aired', tag: 'NOT AIRED', color: 'var(--state-idle)', dim: true, live: false },
+  upcoming: { label: 'Upcoming', tag: 'UPCOMING', color: 'var(--state-upcoming)', dim: true, live: false },
   unwatched: { label: 'Not started', tag: 'NOT STARTED', color: 'var(--state-idle)', dim: true, live: false },
-  paused: { label: 'Paused', tag: 'PAUSED', color: 'var(--state-paused)', dim: true, live: false },
+  paused: { label: 'On hold', tag: 'ON HOLD', color: 'var(--state-paused)', dim: true, live: false },
   dropped: { label: 'Stopped', tag: 'STOPPED', color: 'var(--state-stopped)', dim: true, live: false },
 }
 
@@ -244,11 +250,11 @@ export function getStoryPhase(franchise: Franchise): StoryPhase {
 }
 
 const PHASE_COPY: Record<StoryPhase, { label: string; color: string }> = {
-  complete: { label: 'Finished', color: 'var(--state-done)' },
-  watching: { label: 'In progress', color: 'var(--state-progress)' },
-  'caught-up': { label: 'Caught up', color: 'var(--state-caughtup)' },
+  complete: { label: 'Completed', color: 'var(--state-done)' },
+  watching: { label: 'Watching', color: 'var(--state-progress)' },
+  'caught-up': { label: 'Caught up', color: 'var(--state-planned)' },
   dropped: { label: 'Stopped', color: 'var(--state-stopped)' },
-  paused: { label: 'Paused', color: 'var(--state-paused)' },
+  paused: { label: 'On hold', color: 'var(--state-paused)' },
   backlog: { label: 'Not started', color: 'var(--state-idle)' },
   planned: { label: 'Planned', color: 'var(--state-planned)' },
 }
@@ -380,4 +386,114 @@ export function storyTint(
 
   const hue = 262 + storyHue(id)
   return `hsla(${hue}, 82%, 58%, ${alpha})`
+}
+
+/* --------------------------------------------------------------------------
+   Story accents
+   --------------------------------------------------------------------------
+   Every story carries an accent from its own AniList artwork (`coverImage.color`).
+   These helpers turn that colour into the custom properties the UI reads, with
+   two guard rails:
+
+     · AniList occasionally returns a near-black or near-white "dominant colour"
+       for a cover. Those make useless accents, so they fall through to
+       StoryDex indigo rather than producing an invisible or blinding accent.
+     · The accent is used for *fill* (progress, nodes, bars), never for small
+       text on a dark ground, because we cannot guarantee its contrast. Text
+       keeps to ink and the brand ramp.
+   -------------------------------------------------------------------------- */
+
+function usableAccent(accent?: string | null): string | null {
+  if (!accent) return null
+  const rgb = hexToRgb(accent)
+  if (!rgb) return null
+  const [r, g, b] = rgb
+  const luma = (0.2126 * r + 0.7152 * g + 0.2107 * b) / 255
+  if (luma <= 0.12 || luma >= 0.9) return null
+  // Very desaturated greys read as "broken UI" rather than "that story's colour".
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  if (max - min < 18) return null
+  return accent.trim()
+}
+
+/**
+ * The CSS custom properties for a story's accent.
+ * Spread onto any element: `<div style={accentVars(franchise)}>`.
+ */
+export function accentVars(
+  input: string | { id: string; accentColor?: string | null } | null | undefined,
+): CSSProperties {
+  const accent = typeof input === 'string' ? null : usableAccent(input?.accentColor)
+  const id = typeof input === 'string' ? input : (input?.id ?? '')
+  if (!accent) {
+    return {
+      '--accent': 'var(--brand)',
+      '--accent-strong': 'var(--brand-strong)',
+      '--accent-soft': 'var(--brand-soft)',
+    } as CSSProperties
+  }
+  return {
+    '--accent': accent,
+    '--accent-strong': `color-mix(in oklab, ${accent} 70%, white)`,
+    '--accent-soft': `color-mix(in oklab, ${accent} 22%, transparent)`,
+    '--accent-id': id,
+  } as CSSProperties
+}
+
+/** A single colour for a story's accent, for the rare inline use. */
+export function accentColor(
+  input: string | { id: string; accentColor?: string | null },
+): string {
+  if (typeof input !== 'string') {
+    const usable = usableAccent(input.accentColor)
+    if (usable) return usable
+  }
+  return `hsl(${262 + storyHue(typeof input === 'string' ? input : input.id)} 82% 62%)`
+}
+
+/* --------------------------------------------------------------------------
+   Artwork selection
+   -------------------------------------------------------------------------- */
+
+export interface StoryArtwork {
+  src: string
+  /** True when this is a real AniList banner rather than a cover standing in. */
+  isBanner: boolean
+}
+
+/**
+ * The widest artwork a story has.
+ *
+ * AniList banners exist for a minority of titles and are exactly the right
+ * shape for a cinematic hero; when one is missing, the cover is used in the
+ * same slot and the frame crops it (never blends, never generates anything).
+ */
+export function storyArtwork(
+  input: { posterUrl: string; bannerUrl?: string | null },
+): StoryArtwork | null {
+  if (input.bannerUrl && /^https?:\/\//i.test(input.bannerUrl)) {
+    return { src: input.bannerUrl, isBanner: true }
+  }
+  if (input.posterUrl && /^https?:\/\//i.test(input.posterUrl)) {
+    return { src: input.posterUrl, isBanner: false }
+  }
+  return null
+}
+
+/** How much of an entry is watched, 0–1. Completed entries are always 1. */
+export function entryRatio(entry: Season): number {
+  const status = getEntryStatus(entry)
+  if (status === 'watched') return 1
+  if (!entry.episodes || entry.episodes <= 0) return 0
+  return Math.max(0, Math.min(1, (entry.progress ?? 0) / entry.episodes))
+}
+
+/** "Episode 9 of 14" / "3 of 13 episodes" — the honest phrasing for one entry. */
+export function episodeLabel(entry: Season): string {
+  const total = entry.episodes || 0
+  const watched = entry.progress ?? 0
+  if (total <= 0) return 'Episode count unknown'
+  if (total === 1) return getEntryStatus(entry) === 'watched' ? 'Film · watched' : 'Film'
+  return `Episode ${watched} of ${total}`
 }

@@ -2,68 +2,59 @@ import { cn } from '@/lib/utils'
 import { statusVisual, type EntryStatus } from '@/lib/design'
 
 /* ==========================================================================
-   StatusMark
+   Status
    --------------------------------------------------------------------------
-   A word and a dot. Not a pill, not a tinted badge with a border — the previous
-   design's badge layer is gone entirely.
+   Every state in StoryDex is one of six, and each one is drawn the same way at
+   every scale: a tinted chip, a word, or a dot.
 
-   Every status also carries a shape, so colour is never the only signal:
-     watched   → a filled disc
-     watching  → a half-filled disc (you are between episodes)
-     planned   → a hollow disc
-     not aired → a hollow disc at low contrast
-     stopped   → a bar (a hard stop)
+     watched   → emerald   "Completed"
+     watching  → indigo    "Watching"
+     planned   → blue      "Planned"
+     upcoming  → amber     "Upcoming"
+     paused    → grey      "On hold"
+     dropped   → red       "Stopped"
+
+   The chip is the app's workhorse: it sits on artwork (posters, timeline cards)
+   and in tables, always at the same size and weight, so state is legible
+   anywhere without a legend. Colour alone never carries it — the word is always
+   there, and the dot variant keeps a shape distinction for tight spaces.
    ========================================================================== */
 
-interface StatusMarkProps {
-  status: EntryStatus
-  /** Override the wording, e.g. "Caught up" for a story rather than an entry. */
-  label?: string
-  /** `sm` for tables and cards, `md` in rows and headers. */
-  size?: 'sm' | 'md'
-  /** Render the dot before the word. */
-  dot?: boolean
-  className?: string
-  /** Colour only, no dot — for tight spaces. */
-  bare?: boolean
-}
-
-export function StatusMark({
+/** A tinted chip. Safe on artwork: solid fill, no transparency behind text. */
+export function StatusChip({
   status,
   label,
-  size = 'sm',
-  dot = true,
   className,
-  bare = false,
-}: StatusMarkProps) {
+  size = 'sm',
+}: {
+  status: EntryStatus
+  label?: string
+  className?: string
+  size?: 'xs' | 'sm'
+}) {
   const visual = statusVisual(status)
-  const text = label ?? visual.label
-
-  if (bare) {
-    return (
-      <span className={cn('font-medium', size === 'sm' ? 'text-small' : 'text-body', className)}
-        style={{ color: visual.color }}>
-        {text}
-      </span>
-    )
-  }
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 font-medium',
-        size === 'sm' ? 'text-small' : 'text-body',
+        'inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap',
+        size === 'xs'
+          ? 'px-1.5 py-[3px] text-[0.625rem] tracking-[0.06em] uppercase'
+          : 'px-2 py-[3px] text-[0.6875rem] tracking-[0.04em]',
         className,
       )}
-      style={{ color: visual.color }}
+      style={{
+        color: visual.color,
+        background: `color-mix(in oklab, ${visual.color} 24%, #05060a)`,
+        boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${visual.color} 34%, transparent)`,
+      }}
     >
-      {dot && <StatusDot status={status} />}
-      {text}
+      {label ?? visual.label}
     </span>
   )
 }
 
-/** The mark itself. Shape distinguishes what colour alone cannot. */
+/** The dot. Shape distinguishes what colour cannot. */
 export function StatusDot({ status, className }: { status: EntryStatus; className?: string }) {
   const visual = statusVisual(status)
   const base = 'inline-block shrink-0'
@@ -79,7 +70,6 @@ export function StatusDot({ status, className }: { status: EntryStatus; classNam
   }
 
   if (status === 'watching') {
-    // Half-filled: you are between episodes.
     return (
       <span
         className={cn(base, 'relative size-2 rounded-full', className)}
@@ -107,14 +97,43 @@ export function StatusDot({ status, className }: { status: EntryStatus; classNam
   )
 }
 
-/**
- * The single "you are here" token.
- * Clay is the only warm colour in the product, so this needs no emphasis
- * beyond being the only clay thing on screen.
- */
-export function CurrentMark({ label = 'Current', className }: { label?: string; className?: string }) {
+/** Dot + word, for rows and headers where a chip would be too loud. */
+export function StatusMark({
+  status,
+  label,
+  size = 'sm',
+  dot = true,
+  className,
+}: {
+  status: EntryStatus
+  label?: string
+  size?: 'sm' | 'md'
+  dot?: boolean
+  className?: string
+}) {
+  const visual = statusVisual(status)
+  const text = label ?? visual.label
+
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-small font-medium text-current', className)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 font-medium',
+        size === 'sm' ? 'text-small' : 'text-body',
+        className,
+      )}
+      style={{ color: visual.color }}
+    >
+      {dot && <StatusDot status={status} />}
+      {text}
+    </span>
+  )
+}
+
+/** The single "you are here" token. */
+export function CurrentMark({ label = 'Watching', className }: { label?: string; className?: string }) {
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-small font-medium', className)}
+      style={{ color: 'var(--accent-strong)' }}>
       <StatusDot status="watching" />
       {label}
     </span>

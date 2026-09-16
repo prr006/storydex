@@ -13,20 +13,19 @@ import { cn } from '@/lib/utils'
 /* ==========================================================================
    ImportDialog
    --------------------------------------------------------------------------
-   A dialogue box, not a cinema. Paper sheet, one ruled field, one pine button,
-   and the sentence that matters: your library stays in this browser.
+   The first real interaction a new user has, so it sets the tone: a dark sheet
+   over a dimmed page, one field, one indigo button, and the sentence that
+   matters — your library stays in this browser.
 
-   The import runs in two visible stages — reading your list, then following
-   AniList's relation graph to group entries into stories — because the second
-   stage is the slow one and the reason to wait is the product's whole premise.
+   The import runs in two visible stages: reading the list, then following
+   AniList's relation graph to group entries into stories. The second stage is
+   the slow one, and saying so makes the wait feel like work rather than lag.
    ========================================================================== */
 
 interface ImportDialogProps {
   isOpen: boolean
   onClose: () => void
-  /** Pre-filled when re-importing an existing library. */
   initialUsername?: string
-  /** True when there is already a library to replace. */
   replacing?: boolean
 }
 
@@ -81,7 +80,7 @@ export function ImportDialog({
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-[80] bg-ink/40"
+            className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -94,20 +93,28 @@ export function ImportDialog({
               role="dialog"
               aria-modal="true"
               aria-labelledby="import-title"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
               transition={{ duration: DURATION.overlay, ease: EASE }}
-              className="pointer-events-auto relative w-full max-w-[460px] rounded-md border border-rule-strong bg-surface lift"
+              className="pointer-events-auto relative w-full max-w-[440px] overflow-hidden rounded-lg border border-line-strong bg-surface lift"
             >
-              {/* ── Corner ruled like a catalogue card ─────────────────── */}
-              <div className="flex items-start justify-between gap-6 border-b border-rule px-6 pt-6 pb-5">
+              {/* A wash of the brand colour, so the sheet belongs to the app. */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 -top-24 h-48"
+                style={{
+                  background:
+                    'radial-gradient(60% 100% at 30% 100%, rgba(109,92,255,0.28) 0%, transparent 70%)',
+                }}
+              />
+
+              <div className="relative flex items-start justify-between gap-6 px-6 pb-5 pt-6">
                 <div>
-                  <p className="eyebrow">AniList</p>
-                  <h2
-                    id="import-title"
-                    className="mt-2.5 text-title font-semibold text-ink"
-                  >
+                  <p className="eyebrow" style={{ color: 'var(--brand-strong)' }}>
+                    AniList
+                  </p>
+                  <h2 id="import-title" className="mt-2.5 text-title font-bold text-ink">
                     {replacing ? 'Replace your library' : 'Bring your list across'}
                   </h2>
                 </div>
@@ -116,23 +123,22 @@ export function ImportDialog({
                   onClick={handleClose}
                   disabled={busy}
                   aria-label="Close"
-                  className="-mr-1.5 -mt-1 grid size-8 shrink-0 place-items-center rounded-sm text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-40"
+                  className="-mr-1.5 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:bg-white/[0.06] hover:text-ink disabled:opacity-40"
                 >
                   <X className="size-4" aria-hidden />
                 </button>
               </div>
 
-              <div className="px-6 py-6">
-                <p className="reading max-w-[44ch] text-ink-2">
-                  StoryDex reads your public list and regroups every entry into the franchises they
-                  belong to — so a story reads as one story, not twelve rows.
+              <div className="relative px-6 pb-6">
+                <p className="text-body text-ink-2">
+                  StoryDex reads your public list and regroups every entry into the franchise it
+                  belongs to.
                 </p>
 
-                {/* The field is a rule, not a box. */}
-                <div className="mt-7">
+                <div className="mt-6">
                   <label
                     htmlFor="anilist-username"
-                    className="text-micro font-semibold uppercase tracking-[0.08em] text-ink-3"
+                    className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-ink-3"
                   >
                     AniList username
                   </label>
@@ -154,13 +160,13 @@ export function ImportDialog({
                     disabled={busy}
                     aria-invalid={Boolean(error)}
                     className={cn(
-                      'mt-2.5 w-full border-b bg-transparent pb-2 text-lead text-ink placeholder:text-ink-3 focus:outline-none disabled:opacity-50',
-                      error ? 'border-state-stopped' : 'border-rule-strong focus:border-brand',
+                      'mt-2.5 h-11 w-full rounded-sm border bg-surface-2 px-3.5 text-body text-ink placeholder:text-ink-3 focus:outline-none disabled:opacity-50',
+                      error ? 'border-state-stopped' : 'border-line-strong focus:border-brand',
                     )}
                   />
                   <p className="mt-3 text-small leading-relaxed text-ink-3">
-                    Public lists only. Nothing is sent to a StoryDex server — your library is kept
-                    in this browser.
+                    Public lists only. Nothing is sent to a StoryDex server — your library is kept in
+                    this browser.
                   </p>
                 </div>
 
@@ -173,9 +179,13 @@ export function ImportDialog({
                       transition={{ duration: 0.2, ease: EASE }}
                       className="overflow-hidden"
                     >
-                      <p className="mt-5 flex items-start gap-2.5 border-l-2 border-state-stopped pl-3 text-body text-ink">
+                      <p
+                        className="mt-5 flex items-start gap-2.5 border-l-2 pl-3 text-body text-ink"
+                        style={{ borderColor: 'var(--state-stopped)' }}
+                      >
                         <AlertCircle
-                          className="mt-0.5 size-4 shrink-0 text-state-stopped"
+                          className="mt-0.5 size-4 shrink-0"
+                          style={{ color: 'var(--state-stopped)' }}
                           aria-hidden
                         />
                         {error}
@@ -186,7 +196,11 @@ export function ImportDialog({
 
                 {busy && (
                   <p className="mt-5 flex items-center gap-2.5 text-body text-ink-2">
-                    <Loader2 className="size-4 animate-spin text-brand" aria-hidden />
+                    <Loader2
+                      className="size-4 animate-spin"
+                      style={{ color: 'var(--brand-strong)' }}
+                      aria-hidden
+                    />
                     {stage === 'reading'
                       ? `Reading ${username.trim()}'s list…`
                       : 'Following the relation graph to group stories…'}
@@ -198,7 +212,7 @@ export function ImportDialog({
                     type="button"
                     onClick={handleClose}
                     disabled={busy}
-                    className="inline-flex h-10 items-center justify-center rounded-sm border border-rule-strong px-5 text-body font-medium text-ink transition-colors hover:bg-sunk disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-line-strong px-5 text-body font-medium text-ink transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -206,7 +220,7 @@ export function ImportDialog({
                     type="button"
                     onClick={handleImport}
                     disabled={!username.trim() || busy}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-sm bg-brand px-5 text-body font-medium text-brand-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-brand px-5 text-body font-semibold text-white transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {busy ? 'Importing…' : replacing ? 'Replace library' : 'Import library'}
                   </button>

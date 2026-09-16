@@ -2,38 +2,39 @@
 
 import { useLibraryContext } from '@/components/AppShell'
 import { DiscoverBoard } from '@/components/DiscoverBoard'
-import { SectionHead } from '@/components/Chapter'
 
 /* ==========================================================================
    Discover — /discover
    --------------------------------------------------------------------------
    Live AniList data, cross-referenced with what you already own. No login, no
-   write access, no fabricated catalogue: the same API the import reads.
+   write access, no invented catalogue: the same public API the import reads.
 
-   Works with an empty library too — that's the point of a discover page.
+   The page opens on one featured title rather than a heading, because
+   discovery should look like discovery. Works with an empty library too —
+   that is the point of a discover page.
    ========================================================================== */
 
 export default function DiscoverPage() {
   const { library, openImport } = useLibraryContext()
 
   return (
-    <div className="shell pb-24 pt-12">
-      <SectionHead
-        as="h1"
-        title="Discover"
-        lead="What AniList is watching right now, what's airing this season, and what's been announced but hasn't started. Anything already in your collection is marked."
-        action={
-          !library.isImported ? (
+    <div>
+      {!library.isImported && (
+        <div className="shell pt-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-line bg-surface px-5 py-4">
+            <p className="text-body text-ink-2">
+              Import your AniList list and Discover will mark everything you already own.
+            </p>
             <button
               type="button"
               onClick={openImport}
-              className="inline-flex h-10 items-center rounded-sm border border-rule-strong px-4 text-body font-medium text-ink transition-colors hover:bg-sunk"
+              className="inline-flex h-10 items-center rounded-full bg-brand px-5 text-body font-semibold text-white transition-colors hover:bg-brand-strong"
             >
-              Import your list
+              Import from AniList
             </button>
-          ) : undefined
-        }
-      />
+          </div>
+        </div>
+      )}
 
       <DiscoverBoard franchises={library.franchises} />
     </div>
