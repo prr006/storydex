@@ -340,6 +340,85 @@ query ($page: Int, $perPage: Int) {
  * decorative surface (the landing artwork wall, the empty dashboard), and a
  * screensaver must never block a page from rendering.
  */
+/* --------------------------------------------------------------------------
+   Discover
+   --------------------------------------------------------------------------
+   Three lists, one request. AniList lets several `Page` blocks be aliased in a
+   single query, so Trending / This season / Not yet aired arrive together and
+   the Discover page costs exactly one round trip.
+
+   Like the spotlight, this never throws: Discover is a place to browse, and a
+   failed request should leave the page standing with an honest note rather than
+   an error screen.
+   -------------------------------------------------------------------------- */
+
+export type DiscoverSeason = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL'
+
+export interface DiscoverBoards {
+  trending: AniListMedia[]
+  seasonal: AniListMedia[]
+  upcoming: AniListMedia[]
+  /** The season the `seasonal` board was queried for. */
+  season: DiscoverSeason
+  seasonYear: number
+}
+
+const DISCOVER_QUERY = `
+query ($perPage: Int, $season: MediaSeason, $seasonYear: Int) {
+  trending: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+  seasonal: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+  upcoming: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+}
+`
+
+/** The AniList season a given month falls in. */
+export function seasonOf(date = new Date()): { season: DiscoverSeason; year: number } {
+  const month = date.getMonth() // 0-based
+  const season: DiscoverSeason =
+    month <= 2 ? 'WINTER' : month <= 5 ? 'SPRING' : month <= 8 ? 'SUMMER' : 'FALL'
+  return { season, year: date.getFullYear() }
+}
+
+interface DiscoverResponse {
+  trending: { media: AniListMedia[] } | null
+  seasonal: { media: AniListMedia[] } | null
+  upcoming: { media: AniListMedia[] } | null
+}
+
+function usable(media: AniListMedia[] | undefined): AniListMedia[] {
+  return (media ?? []).filter(
+    (item) => Boolean(item.coverImage?.extraLarge || item.coverImage?.large),
+  )
+}
+
+export async function fetchDiscoverAnime(perPage = 12): Promise<DiscoverBoards> {
+  const { season, year } = seasonOf()
+  const empty: DiscoverBoards = { trending: [], seasonal: [], upcoming: [], season, seasonYear: year }
+
+  try {
+    const data = await graphqlRequest<DiscoverResponse>(DISCOVER_QUERY, {
+      perPage,
+      season,
+      seasonYear: year,
+    })
+    return {
+      trending: usable(data.trending?.media),
+      seasonal: usable(data.seasonal?.media),
+      upcoming: usable(data.upcoming?.media),
+      season,
+      seasonYear: year,
+    }
+  } catch {
+    return empty
+  }
+}
+
 export async function fetchSpotlightAnime(perPage = 12): Promise<AniListMedia[]> {
   try {
     const data = await graphqlRequest<{ Page: { media: AniListMedia[] } | null }>(

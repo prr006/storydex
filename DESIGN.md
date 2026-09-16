@@ -1,608 +1,430 @@
-# StoryDex — Design Direction
+# StoryDex — Redesign: “The Catalogue”
 
-**Working name for this direction: “The Midnight Archive.”**
+**Status: this document supersedes the previous “Midnight Archive” direction, which is abandoned.**
 
-A screening room, not a dashboard. The interface behaves like a curated print
-archive that happens to be interactive: ink-black paper, one violet ink, one
-warm accent reserved for a single job, editorial serif titles, and technical
-mono numerals. Artwork is the loudest element on every screen; UI chrome is the
-quietest.
-
-This document is the specification. It is implemented — every token, measurement
-and rule below exists in the codebase, and the file paths are given so the
-reasoning can be traced back to the source.
+Midnight Archive was a screening room: near-black violet canvas, cinematic full-bleed
+hero, glowing ember accent, mono labels at 11px, a dense poster wall, ring-and-ledger
+statistics. It looked like a streaming service and a dashboard at the same time. This
+document replaces it with something else entirely.
 
 ---
 
-## 0. The one idea everything follows
+## Part 1 — UX first: what StoryDex is
 
-> **One warm colour, one job.**
+### 1.1 The job
 
-The brief asked for “restrained use of glow” and “avoid excessive borders,
-badges, shadows.” The way to earn that restraint is to give a single colour a
-single meaning and never spend it anywhere else.
+StoryDex does one thing a normal anime list can't: it treats a franchise as **one story**
+instead of twelve rows. Everything in the interface should serve the sentence a user
+actually wants to say:
 
-**Ember (`#ffb457`) means: *you are here, and here is what to watch next.***
+> *“I'm four entries into Re:ZERO, twelve into One Piece, and these six I've finished.”*
 
-It appears on the current entry in the Franchise Map, the “Up next” eyebrow on
-the dashboard hero, the progress rule of a story you are mid-way through, and
-the row marker of the entry you have in flight. Nothing else. Not buttons, not
-links, not decoration.
+### 1.2 The three questions the app must answer, in order
 
-Everything else falls into four semantic groups:
-
-| Role | Colour | Meaning |
+| Rank | Question | Where it's answered |
 | --- | --- | --- |
-| Identity | violet `#8b5cf6` / `#a78bfa` | StoryDex itself — chrome, actions, the default progress rule |
-| Ahead | veil `#6f6a8c`, lilac `#b79cff` | not started, or planned later |
-| Here | ember `#ffb457` | your current position in a story |
-| Done | jade `#45e0a0` | finished, earned |
+| 1 | **Where am I right now?** | Continue — a compact list of active stories, one row each |
+| 2 | **What's next, and when?** | Up next — next entry per active story, plus anything waiting on air |
+| 3 | **What do I own?** | The library — browse, filter, sort, three densities |
 
-That is the whole system. It means a user can scan a page of artwork and read
-their own progress from colour alone, and it means the warm accent can be tiny —
-a 3px dot — and still stop the eye.
+Aggregate statistics are **not** a question anyone opens a tracker to ask. They are
+therefore demoted from four boxes and a progress ring to **one inline sentence** in the
+header. If the user wants the totals, they are there; they never take a section.
 
----
+### 1.3 What StoryDex feels like on open
 
-## 1. Overall visual identity
+**“This is my collection of stories, and I know exactly where I am with them.”**
 
-**Ink, not black.** The canvas is `#050410` — near-black with a violet bias, so
-nothing ever reads as a neutral Tailwind gray. Surfaces step up in *light*, not
-in borders: `#08070f` → `#0b0917` → `#100e1e` → `#171428` → `#1f1b35`.
+That is a *library* feeling, not a *streaming* feeling. Three consequences:
 
-**Four atmosphere layers** (`components/Atmosphere.tsx`) sit behind every page:
+- **Nothing autoplays, rotates, or animates on its own.** A collection is still; the user moves.
+- **The interface is quiet so the collection is loud.** Paper ground, one accent, generous space.
+- **Progress is stated in words and counts**, not inferred from a bar's angle.
 
-1. **Ink base** — the violet-black canvas.
-2. **Aurora** — three slow-drifting radial blooms (violet, indigo, cyan) at 34s,
-   46s and 58s. Different periods means the background never visibly repeats.
-3. **Horizon** — a wide ellipse of light bleeding down from above the fold, so
-   pages feel lit from a source rather than uniformly filled.
-4. **Vignette + grain** — an edge falloff that pulls the eye to the composition
-   centre, and 3.5% SVG film grain in `overlay` blend.
+### 1.4 Primary action
 
-Cost: one fixed `pointer-events-none` div, no images, no canvas. It is what
-stops the product from looking like a template, and it is entirely disabled
-under `prefers-reduced-motion`.
+There is **one** primary action per screen, and it is always the same verb — *open the
+story you were already in*:
 
-**Per-story tint comes from the artwork itself.** AniList returns
-`coverImage.color` — the dominant colour of each cover — and every franchise
-carries it through as `accentColor`. Heroes, cards and the atmosphere layers
-tint themselves in sympathy with the poster sitting inside them, for free: no
-colour extraction, no canvas, no extra request. When AniList omits the colour
-(it happens on older entries) `storyTint()` falls back to a hue derived from the
-franchise id, clamped to a ±34° violet-family spread so an untinted story still
-reads as StoryDex rather than as a random colour.
+- Home → the Continue rows. The entire row is the target, not a button inside it.
+- Story page → the next entry, as a single inline call to action plus a sticky bar.
+- Library → open a story. Browsing is *finding*, not *deciding*.
 
-**Hairlines, not borders.** Cards do not have boxes. Surfaces are separated by
-1px rules at 7% white (`--color-hairline`), often gradient-faded at both ends
-(`.rule-fade`). Radii are generous — 22px on cards, 28–32px on plates — because
-large radii read as “object” and small radii read as “widget.”
-
-**Glass is chrome-only.** Real `backdrop-filter` blur appears in exactly two
-places: the navbar when condensed, and the “Up next” plate that floats over
-artwork. Everywhere else, depth comes from gradients and light, not from
-frosted panels — which is what separates a media product from a SaaS dashboard.
-
-Net effect on the shelf grid: **the cards have no borders and no shadows at all**
-separating them from each other — hairlines only ever appear *between sections
-and rows* — and each card carries exactly two overlays (a scrim and a hover
-wash) where the previous card carried four effects (`shadow-2xl +
-shadow-brand/20 + hover:ring + hover:-translate-y`).
+Import is a **secondary, once-ever** action: a compact control in the header, and the
+whole of the empty state.
 
 ---
 
-## 2. Dashboard layout
+## Part 2 — Information architecture
 
-The previous hierarchy was a 72px all-caps “YOUR STORIES” banner and four equal
-stat boxes. That is a control panel. The new page is **“The Shelf”** — five
-registers, each answering exactly one question:
+### 2.1 Routes
+
+| Route | Name | Contents | Status |
+| --- | --- | --- | --- |
+| `/` | Welcome | Identity, what StoryDex does, import, live AniList artwork | kept, rebuilt |
+| `/dashboard` | **Home** | Header sentence → Continue → Up next → Recently added → compact library block | kept, rebuilt |
+| `/library` | **Library** | Full browse: search, filters (status, format, genre, franchise), sort, 3 densities | **new** |
+| `/franchises` | **Collections** | Franchises as story collections, grouped by lifecycle, with entry composition | **new** |
+| `/discover` | **Discover** | Live AniList trending / this season / upcoming, cross-referenced against your library | **new** |
+| `/franchise/[id]` | **Story** | Identity → Progress → Timeline → Entries → Next action | kept, rebuilt |
+
+The header shows four destinations only: **Library · Discover · Franchises** plus compact
+search and a settings menu. The **wordmark goes to Home** (`/dashboard`); `/` is the
+welcome page for a first visit and a "back to where you were" page afterwards. Below
+`md` the three links move into a sheet rather than disappearing. `Settings` is a popover,
+not a route: theme, re-import, clear data, storage disclosure.
+
+**Library vs Collections** are deliberately different jobs:
+
+- **Library** answers *“find it.”* A flat, filterable, sortable index of stories. Good for
+  “show me everything I've dropped” or “all films.”
+- **Collections** answers *“what shape is this story?”* Every franchise is shown as a
+  **composition strip** — TV seasons, films, OVAs and specials as distinguishable marks —
+  grouped into In progress / Caught up / Finished / Not started / Stopped. You see
+  relationships, not just names.
+
+### 2.2 Home, concretely
 
 ```
-┌─ imported-from strip ──── 1px rule, findable but never first ──────────────┐
+┌────────────────────────────────────────────────────────────────────────────┐
+│ StoryDex      Library   Discover   Franchises      [ Search ]        ⚙     │  sticky, 60px, 1px rule beneath
+├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
-│  1  CONTINUE WATCHING      ← where am I right now?                         │
-│     full-bleed cinematic hero, 8s staging rail along the bottom            │
+│  Tuesday, 16 September                                        ← 12.5px     │
 │                                                                            │
-│  2  LIBRARY SUMMARY        ← how far have I come?                          │
-│     one ring + one proportional ledger on hairlines (no cards)             │
-│                                                                            │
-│  3  UP NEXT RAIL           ← what should I open?                           │
-│     five posters, captions underneath, horizontal scroll on mobile         │
-│                                                                            │
-│  4  THE SHELF              ← what do I own?                                │
-│     editorial heading + filter rail + 2–6 column poster grid               │
-│                                                                            │
-│  5  LOOSE THREADS          ← what did I abandon?                           │
-│     a ledger of stalled stories, quietest section on the page              │
+│  You're four entries into Re:ZERO.                          ← 34–52px      │
+│                                                               instrument   │
+│                                            14 stories · 3 in progress       │
+│                                            41 entries · 22 watched          │  ← ALL statistics, one block, right-aligned
+│                                                               sans, ink-2  │
+├── CONTINUE ─────────────────────────────────────────────────────────────────┤
+│  ▢   Re:ZERO − Starting Life in Another World            In progress       │  ← 76px cover
+│      Season 3 · TV · 2024                                entry 4 of 4       │
+│      ▮▮▮▯                                                75%               │  ← segment ruler, one block per entry
+│                                                            [ Resume → ]    │
+│  ────────────────────────────────────────────────────────────────────────  │
+│  ▢   One Piece                                           In progress       │
+│      Episode 1082 of 1122 · TV                                           │
+│      ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▮▮▮                 │
+├── UP NEXT ──────────────────────────────────────────────────────────────────┤
+│  ○  One Piece        Episode 1083                    TV · airing           │  ← waiting on air, hollow mark
+│  ●  Fullmetal Alch.  Conqueror of Shamballa           Film · 2026           │
+├── RECENTLY ADDED ───────────────────────────────────────────────────────────┤
+│  [6 cards]                                          Browse the library →   │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why one hero and not four stats.** A tracker’s most valuable pixel is the next
-episode. So the dashboard opens with it at full bleed, and the aggregate numbers
-are demoted to a single ring plus a ledger strip — *“3 of 14 stories complete ·
-1,284 of 2,110 episodes”*. One number stated confidently beats four competing.
+Deliberate choices:
 
-**Why “Library composition” is a 6px strip.** Phase distribution (complete / in
-progress / caught up / backlog / planned / paused / dropped) is a hundred data
-points of nuance and about 40px of legitimate screen space. A proportionally
-flex-growed bar with a hairline legend says it once, then gets out of the way.
+- **Continue is a list, not a carousel and not a hero.** A user with three active stories
+  should see all three at once, compared side by side, with their real next entry named.
+  A rotating hero hides two of them.
+- **One story per row, full width.** No competitor product does this; it is what makes
+  “where am I” legible in a single downward glance.
+- **The segment ruler replaces every progress bar in the product.** One block per entry,
+  so “3 of 4” is *countable*, not estimated. It is the app's signature visual.
+- **Statistics are one right-aligned paragraph.** Never a section.
 
-**The screen door.** Section eyebrows are 11px mono, uppercase, 0.14em tracking,
-in `--color-veil`. Headings are editorial serif at
-`clamp(1.75rem, 3vw, 3rem)`. That pairing — tiny technical label over large
-editorial title — is the single most repeated typographic move in the product
-and it is what makes a list of sections read as a publication.
-
-**What is not on this page:** view toggles, chart widgets, notifications, user
-avatars, a floating action button. The library *is* the content.
-
----
-
-## 3. Franchise card design
-
-`components/StoryCard.tsx` — a 2:3 poster, and nothing that could be mistaken
-for a container. The card is the artwork; the interface is what the artwork says.
-
-**Resting state — six marks total:**
+### 2.3 The library, concretely
 
 ```
-┌────────────────────────┐
-│ 3/4              ●     │  mono counter (11px) · status dot
-│                        │
-│                        │
-│                        │
-│                        │
-│  In progress ─ 4 ent.  │  ← hover only
-│  ⏵ Next · Season 3     │  ← hover only
-│  Re:ZERO − Starting…   │  17px semibold, 2-line clamp
-│  2016–2024        75%  │  mono year span · mono percentage
-│  ▬▬▬▬▬▬▬▬▬▬░░░░░░░░░  │  2px ticked progress rule
-└────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│  Library                                             14 stories            │
+│  Everything you're tracking.                                               │
+│                                                                            │
+│  [ Search titles and entries…………………… ]   Sort [ Recently updated ▾ ]      │
+│                                                                            │
+│  Status  All · In progress · Caught up · Finished · Not started · Stopped   │
+│  Format  All · TV · Film · OVA · Special                                    │
+│  Genre   All · Action · Drama · Fantasy · …                                 │
+│  Franchise ▾                                        Density  ▦ ▤ ☰          │
+├────────────────────────────────────────────────────────────────────────────┤
+│  (grid / list / table — the active density)                                │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Hover is an opening, not a lift.** Three coordinated moves over 500ms on one
-easing curve:
+**Three densities, one component.** This is the answer to “don't force one giant poster
+wall”:
 
-1. The artwork scales to `1.045` over **900ms** — noticeably slower than the
-   card's own motion. Artwork moves at the speed of a camera; chrome moves at
-   the speed of a hand. That single asymmetry is most of what makes it feel
-   expensive.
-2. The lower scrim deepens, and the detail layer — phase tag, entry count, next
-   entry with a play disc, your score — fades up into space that was already
-   reserved. **No layout shift, ever.** The card does not grow; it reveals.
-3. A faint radial wash in the story’s own accent colour appears from the top
-   left, as if the card caught light.
-
-The card lifts only 6px on a shadow that is one inset rim plus one soft ambient
-shadow — not the stacked `shadow-2xl + ring + border` combination that
-immediately reads as generated.
-
-**Progress is a rule, not a pill.** 2px, ticked at each entry boundary so the
-user can count entries rather than estimate a percentage. Violet by default,
-**ember when you are mid-story, jade when finished** — so an entire grid of
-franchises can be read at a glance: warm threads are the ones in flight, green is
-done, violet is untouched.
-
-The card is also the unit of the grid, and the grid is deliberately dense:
-2 columns on mobile, 3 at `sm`, 4 at `lg`, up to 6 at `2xl`. Media libraries
-should feel like shelves you can scan, not tiles you have to scroll.
-
----
-
-## 4. Franchise detail page
-
-`app/franchise/[id]/page.tsx` — the flagship. Five movements:
-
-### 4.1 Hero (86–92svh, full bleed)
-
-The banner fills the viewport, then receives a four-layer grade: horizontal fade
-(dark on the text side), vertical scrim, a top-to-bottom ink wash, and a radial
-tint in the story’s own hue. On load the artwork settles from `scale(1.08)` over
-1.6s — a focus pull, not a zoom.
-
-Content is bottom-anchored: a **236px poster plate** with its own bloom, then the
-eyebrow rail — phase, year span, entry count, all mono — then the title in
-Instrument Serif at `clamp(2.6rem, 7vw, 5.25rem)` with `-0.02em` tracking, then
-the synopsis measured to **62ch** so it reads like a film note rather than a
-paragraph of UI copy.
-
-Genres are **plain mono text with hairline separators**, not a chip cloud. Chips
-on a hero is the most reliable signal of a generated layout.
-
-The whole hero block drifts up 78px and fades to 15% as you scroll — 40px of
-parallax, the only parallax in the product.
-
-### 4.2 Next to Watch (a wide plate spanning the fold)
-
-A single plate, pulled up `-mt-10`/`-mt-16` so it overlaps the hero — the
-“cinematic overhang.” It carries the entry’s own artwork, scaled 110% and heavily
-desaturated behind the copy, so the plate belongs to *that entry* and not just
-the franchise.
-
-Left: **ember eyebrow** (“Watch next” / “Continue watching” / “Coming soon”),
-the entry title in serif, and a mono metadata rail. Right: one filled white CTA
-and one ghost. Two actions total.
-
-Three states, three different actions — this is where the product earns trust:
-
-- `CURRENT` → **Resume** (play glyph), plus “View on AniList”
-- `PLANNING` / not started → **Start watching**
-- `NOT_YET_RELEASED` → eyebrow becomes **“Coming soon”**, the play button is
-  *removed* and replaced by “View on AniList”. A tracker that offers a play
-  button for something that does not exist yet is lying.
-
-When a story is genuinely finished, the plate is replaced by a **CompletionPlate**
-in jade: *“You finished Steins;Gate — 3 entries · 50 episodes · every one
-watched.”*
-
-### 4.3 Franchise Map (see §5)
-
-### 4.4 The full record
-
-Every entry as an editorial row, not a card: index numeral, 16:9 artwork crop,
-title, mono metadata rail, status, and an AniList link that fades in on hover.
-Watched rows drop to 70% opacity with a desaturated crop and a small jade check
-overlay; the row you are currently watching gets a **2px ember left edge**.
-Hover returns full opacity — the row wakes up when you look at it.
-
-### 4.5 The ledger (sticky sidebar on desktop, second on mobile)
-
-Three blocks: the numbers (entries, watched, episodes, span, your score, format
-mix as a proportional rule), “where you stand” (per-status counts with
-proportional hairlines), and genres as plain text.
-
-On mobile the ledger moves **above** the full record — a reader on a phone wants
-the summary before a six-row table.
-
----
-
-## 5. Timeline / Franchise Map
-
-`components/FranchiseMap.tsx`
-
-**The problem with every anime timeline.** Thumbnail left, metadata right, dots
-on a wire. It communicates order, and only order. It has no point of view, so it
-cannot make you feel anything about your own progress.
-
-**The idea: draw the story as a road you have already walked.**
-
-```
-   ✓  01  2016  Re:ZERO − Starting Life in Another World        WATCHED
-   │           TV · 25 eps · scored 9.2
-   ✓  02  2020  Re:ZERO Season 2                                WATCHED
-   │           TV · 13 eps
-   ✓  03  2021  Re:ZERO Season 2 Part 2                         WATCHED
-   │           TV · 12 eps
-   ◉  04  2024  Re:ZERO Season 3          [WATCH NEXT]         WATCHING
-   │           TV · 16 eps · ep 6 / 16
-   │           ▬▬▬▬▬▬░░░░░░░░░░░░░░░░
-   ○  05  2026  Re:ZERO Season 4                                 PLANNED
-   │           TV · eps TBA · not aired
-```
-
-**How it is built.** Rather than one long rule, the road is **one 3px segment
-per node**, absolutely positioned to span exactly that row. That is what makes it
-pixel-accurate — the lit/unlit boundary always lands on a node — and it makes the
-road animatable: each travelled segment draws itself downward (`scaleY 0 → 1`)
-when its row enters the viewport, staggered 90ms apart. **The road is laid as you
-read it.** There is no scroll-jacking and no custom scroll listener.
-
-**The node vocabulary** is the smallest set that can carry the meaning:
-
-| Marker | Means |
-| --- | --- |
-| jade ring with a check | watched |
-| **ember disc with a breathing halo** | *this is where you are* |
-| dashed lilac ring | planned |
-| hollow veil ring | not yet released |
-| coral ring | dropped |
-
-The ember node is the single most important pixel in the product: everything
-above it is past, everything below is future. It pulses (`animate-halo`, 2.8s)
-because it is alive. Nothing else on the page animates continuously.
-
-**Text-first, deliberately.** Posters on the timeline would collapse the design
-back into a list of thumbnails. Instead the left register is mono (index, year),
-the right register is the title in sans, and artwork arrives on click via an
-**entry sheet** — a 440px right-side rail on desktop, a bottom sheet on mobile —
-carrying the poster, full metadata, an AniList deep link, and a jump to the row
-in the record.
-
-The map is the journey. The record is the inventory. They are different objects
-because they answer different questions.
-
----
-
-## 6. Typography
-
-Four families, four jobs. This is the part that most distinguishes the design
-from a Tailwind default.
-
-| Family | Role | Where |
+| Density | Use | Row/cell shows |
 | --- | --- | --- |
-| **Instrument Serif** | editorial voice | story titles, hero copy, page section headings, ledger numerals |
-| **Plus Jakarta Sans** | interface voice | nav, buttons, section headers, card titles |
-| **Inter** | reading voice | synopses, descriptions |
-| **JetBrains Mono** | instrument voice | counts, years, formats, percentages, status tags |
+| **Grid** `▦` | scanning by artwork | cover, title, ruler, status, next entry |
+| **List** `▤` | scanning by progress | 56px cover, title, ruler with counts, next entry, status, year |
+| **Table** `☰` | comparing many at once | columns: cover · title · entries · watched · progress · status · format · year |
 
-**Scale** (`@theme` in `app/globals.css`):
+Filters are **multi-select chips grouped by facet**, each with a live count, and they
+compose (status AND format AND genre). Filter state lives in the URL on `/library`, so a
+view is linkable and survives a refresh. Empty results name the filters that caused them
+and offer a one-click reset.
+
+### 2.4 The story page, concretely
+
+Five chapters, vertically sequenced, each with room to breathe. **Nothing is shown
+simultaneously that can be shown in order.**
 
 ```
-display        88px / 0.94 / -0.03em     hero on the landing page
-display-sm     52px / 0.98 / -0.025em    franchise detail title
-title          32px / 1.08 / -0.02em     section headings
-title-sm       22px / 1.20 / -0.015em    card titles (feature variant)
-lead           17px / 1.65               synopses, hero paragraphs
-body           15px / 1.60               default
-body-sm        13px / 1.50               captions, metadata
-label          11px / 0.14em / UPPER     mono eyebrows and status tags
-data           13px / tabular-nums       every number in the product
+┌ 1 · IDENTITY ──────────────────────────────────────────────────────────────┐
+│   ▢ cover        Re:ZERO − Starting Life in Another World                  │
+│   (196px)        Fantasy · Psychological · Thriller                        │
+│                  2016 – 2026 · 4 entries · 66 episodes · TV, Film          │
+│                  [———— synopsis, set in the serif, 62ch ————]              │
+├ 2 · PROGRESS ──────────────────────────────────────────────────────────────┤
+│        0      1      2      3                                              │
+│        ▮      ▮      ▮      ◐         3 of 4 entries · 58 of 66 episodes   │
+│        watched watched watched  current                                    │
+│                                        Next: Season 3 · TV · 2024          │
+├ 3 · TIMELINE ──────────────────────────────────────────────────────────────┤
+│   the story in order, format-labelled, node marks by state                 │
+├ 4 · ENTRIES ───────────────────────────────────────────────────────────────┤
+│   reference table: cover · title · format · year · episodes · score · link  │
+├ 5 · NEXT ACTION ───────────────────────────────────────────────────────────┤
+│   sticky bottom bar when the chapter scrolls out of view                    │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Three rules that do the work:**
-
-1. **Big things get tight tracking; small things get open tracking.** Headlines
-   run `-0.02em` to `-0.03em`; mono labels run `+0.14em`. This reads as
-   intentional at every size and is the opposite of the default
-   `tracking-normal` everything.
-2. **Numerals are monospaced and tabular.** Episode counts, years and
-   percentages never jitter as values change, and they look like instrumentation
-   — which is the correct register for a tracker.
-3. **One editorial element per viewport.** Serif is a spice. A page with a serif
-   heading, serif body and serif captions is a magazine; a page with one serif
-   headline over sans and mono is a product.
-
-The wordmark is serif (“Story” in chalk, “Dex” in violet) with a hairline
-underline that draws on hover. It needs no symbol.
+- **No full-bleed backdrop.** The old hero pushed the story's own title below 90vh of
+  decoration. Identity is now a *title page*: cover object, typography, synopsis. The
+  cover is the artwork moment; the page is paper.
+- **Progress gets its own chapter**, because it's the reason the product exists. It states
+  counts in words *and* draws the segment ruler at scale.
+- **Timeline** shows relationships: every entry labelled by format (TV / Film / OVA /
+  Special), node marks by state, joined by a rail. A composition strip above it gives the
+  shape of the whole story in one line.
+- **Next action appears twice** — inline after Progress, where the decision is made, and
+  as a sticky bar, so the one action is never more than a glance away.
 
 ---
 
-## 7. Colour system
+## Part 3 — Visual direction
 
-Defined as `@theme` tokens in `app/globals.css`; legacy shadcn variable names are
-aliased onto the new palette so nothing can silently fall back to an old value.
+### 3.1 The concept in one line
+
+**A printed catalogue of your collection.** Warm paper, ink, one green, one rust. The
+interface is a well-set book; the covers are the plates.
+
+This is chosen *against* the previous direction on every axis:
+
+| | Midnight Archive (gone) | The Catalogue (new) |
+| --- | --- | --- |
+| Ground | `#050410` violet-black | `#F4F1EB` warm paper |
+| Theme | dark only | **light default + real dark theme** |
+| Brand | violet `#8b5cf6` | **deep pine `#1D5647`** |
+| Accent | ember `#ffb457` (bright amber) | **clay `#A8462A`** (muted rust) |
+| Depth | aurora blobs, glass blur, glow | rules, tinted panels, one soft shadow |
+| Shape | 22–32px radii, pill everything | **6–14px radii, rectilinear** |
+| Display type | Instrument Serif, 88px | Instrument Sans **bold**, 34–52px |
+| Prose type | Inter | **Newsreader** (serif used for *reading*, not titles) |
+| Smallest text | 11px mono, tracked, abundant | **12.5px sans**, rare |
+| Composition | full-bleed hero, poster wall | masthead, editorial column, ruled list |
+| Motion | 1.1s cinematic, parallax, auto-rotate | 8–12px fades, nothing self-animating |
+
+Nothing is carried over: not the palette, not the type pairing, not the shape language,
+not the page rhythm, not the motion.
+
+### 3.2 Colour
+
+Two complete themes, both semantic. **No component names a hex value** — they name a role.
+
+**Light — “Paper” (default)**
 
 ```
-CANVAS
-  ink-950  #050410   page — violet-biased near-black, never #000
-  ink-900  #08070f   recessed panels
-  ink-850  #0b0917   raised surfaces (cards, plates)
-  ink-800  #100e1e   glass bases
-  ink-700  #171428   inputs, artwork placeholders
-  ink-600  #1f1b35   highest surface
-  ink-500  #2a2545   dividers on light-ish surfaces
-
-TEXT
-  chalk    #f2f0fa   primary — a slightly warm white, not #fff
-  mist     #a9a3c4   secondary — the workhorse
-  veil     #6f6a8c   tertiary — labels, "dim" states
-
-IDENTITY (violet)
-  brand-100 #ece6ff · 300 #c4b2ff · 400 #a78bfa
-  brand-500 #8b5cf6 (primary action) · 600 #7137ea · 700 #5a1fc4
-  indigo-300 #b9c0ff · indigo-400 #8f97ff · indigo-700 #353c9e
-
-SEMANTIC
-  ember  #ffb457   YOU ARE HERE / watch next        ← the only warm colour
-  jade   #45e0a0   finished
-  azure  #5ec8ff   caught up (nothing left to air)
-  lilac  #b79cff   planned
-  coral  #ff7a6b   dropped
-  slate  #7f8ba3   paused
+canvas       #F4F1EB   page
+surface      #FFFFFF   cards, panels
+surface-sunk #EDE9E1   wells, tracks, table stripes
+ink          #1B1A17   primary text (warm near-black, never #000)
+ink-2        #5A564E   secondary text
+ink-3        #8B857A   tertiary: labels, table headers
+rule         #E2DDD3   hairlines
+rule-strong  #CFC8BA   card edges, dividers
+pine-600     #1D5647   brand + primary action
+pine-100     #E3EFE9   brand tint
+clay-500     #A8462A   "you are here" — the only warm accent
 ```
 
-**Rules of use**
+**Dark — “Night”**
 
-- Accent colours are held to **under 2% of pixels** on any screen — a working
-  rule, not a measurement. They appear as dots, rules and single words: never
-  fills, never backgrounds, never large badges.
-- Violet is the *only* colour allowed on a button, and only on the landing page;
-  in the app, primary CTAs are **chalk-on-ink** (a white pill), which reads as
-  neutral, confident and expensive. There is exactly one white button per screen.
-- Status is never colour alone: every status also carries a shape (a check, a
-  filled disc, a dashed ring, a hollow ring) and a mono text label. Colour-blind
-  users lose nothing.
-- Gradients are **directional and subtle**: a progress rule from `brand-600` to
-  `brand-300`, a scrim from 96% to transparent. There is not one diagonal
-  purple-pink wash in the product.
+```
+canvas       #131210   warm charcoal (deliberately not navy, not violet)
+surface      #1B1A16
+surface-sunk #24221C
+ink          #F3F0E9
+ink-2        #B4ADA0
+ink-3        #877F72
+rule         #2C2A23
+pine-300     #8FBFB0   brand in dark
+clay-400     #D9774E
+```
+
+**Status is carried by one colour system, used at every size:**
+
+| State | Colour | Meaning |
+| --- | --- | --- |
+| In progress | clay | you are mid-story — **the only warm colour in the app** |
+| Finished | pine | earned |
+| Caught up | blue-slate | nothing left to watch that exists |
+| Not started | ink-3 | sitting on the shelf |
+| Stopped | red-brown | dropped |
+
+The accent budget is one product decision: **clay covers under 3% of pixels on any
+screen.** It appears in the current segment of a ruler, one word in the Continue list,
+one button on the story page. Because it is scarce, a 6px mark is enough to find your
+place in a page of covers.
+
+### 3.3 Type
+
+Two families, two jobs — the opposite of the previous four-family, mono-labelled system.
+
+**Instrument Sans** — *interface and titles.* A slightly narrow grotesk with real weight.
+Titles are set in it at 600–700 with `-0.02em` tracking. This is what replaces the serif
+display: confidence through weight and scale, not through a different typeface.
+
+**Newsreader** — *reading.* A genuine text serif with a real italic, used only for prose:
+synopses, the header sentence, empty states, editorial asides. The previous design used a
+serif for *headlines*; this one uses a serif for *sentences*. That inversion is the whole
+typographic idea.
+
+**Instrument Sans** also carries all numerals with `tabular-nums`, which removes the
+mono-instrument feel while keeping columns from jittering.
+
+```
+micro    11px   uppercase, +0.08em   eyebrow labels only — used ~once per screen
+small    12.5px  table headers, meta
+body     14.5px
+reading  16px   serif, synopses (line-height 1.7)
+lead     18px   serif, header sentence
+title    22px   600   card titles, row titles
+head     30px   700   page titles
+display  clamp(34px, 4.5vw, 52px)  700  -0.02em   the one big statement per page
+mega     clamp(44px, 7vw, 80px)    700  landing only
+```
+
+Rule: **one display on a screen, one micro label, everything else from the middle of the
+scale.** The old design had 11px mono on every element; this one has at most one uppercase
+label per screen.
+
+### 3.4 Space, shape, depth
+
+- **Page gutter** `clamp(20px, 4vw, 44px)`, max content width **1240px**. Narrower than
+  before, which makes the type read as editorial rather than stretched.
+- **Vertical rhythm** 8px base; sections are separated by **72–120px** plus a 1px rule.
+  Generous by default, tighter only inside tables.
+- **Radii** 6px (chips, inputs), 10px (cards, panels), 14px (the identity cover). Small
+  radii read as print; large radii read as an app.
+- **Depth** is a **1px rule plus a tinted panel** in almost every case. There is exactly
+  one shadow in the system — a 2px lift on card hover — and no blur, no glass, no glow.
+- **Rules do the grouping.** Facet rows, table headers, list separators, section breaks.
+  A ruled page is the fastest way to read as “catalogue” instead of “dashboard.”
+
+### 3.5 Motion
+
+Calm. Motion exists to explain a change and then stop:
+
+- Entrances: 8–12px rise, 240ms, stagger 30ms. Short because the page is dense.
+- Hover: border colour and a 1.5% cover scale. No lift, no glow, no parallax.
+- The segment ruler fills once, on first paint of that row, in 500ms.
+- **Nothing self-animates.** No rotating carousels, no scroll-driven drawing, no pulses.
+  A collection is still.
 
 ---
 
-## 8. Motion & interactions
+## Part 4 — Component plan
 
-`lib/motion.ts` is the whole language, and it is small on purpose.
+| Component | Role | Replaces |
+| --- | --- | --- |
+| `Masthead` | Sticky header: wordmark, 3 links, compact search, settings menu. 60px, rule beneath. | `Navbar` |
+| `SettingsMenu` | Popover: theme, re-import, clear library, storage disclosure. | — |
+| `Cover` | The only artwork primitive. Real AniList URL or a designed placeholder; fixed aspect; tint bed from `coverImage.color`. | `Artwork` |
+| `EntryRuler` | **Signature component.** One block per entry: watched / current / planned / upcoming / dropped. Used on cards, rows, tables, detail progress. | `Progress` (bars + rings + ledger) |
+| `StatusMark` | A word and a dot. Six states, one system. | `Status` (dot + tag + YouAreHere) |
+| `ContinueRow` | Full-width active-story row: cover, title, next entry named, ruler, counts, one action. | `ContinueWatching` (hero + carousel) |
+| `UpNextTable` | Compact ruled table of next entries, including not-yet-aired. | — |
+| `StoryCard` | Cover, title, ruler with counts, one status word, one next-entry line. Nothing else. | `StoryCard` (rewritten) |
+| `LibraryBrowser` | Search + facet chips + sort + density toggle + three renderers. Shared by Home and Library. | `FilterRail` |
+| `CompositionStrip` | One mark per entry, shaped by format — the “what shape is this story” visual. | — |
+| `CollectionSection` | Lifecycle group on `/franchises`, with composition strips. | — |
+| `Chapter` | Numbered section wrapper (Identity, Progress, …) that enforces the story page's sequence. | — |
+| `EntryTimeline` | Relationship-aware ordered list: format labels, state marks, connecting rail. | `FranchiseMap` |
+| `EntryTable` | Reference table for the full record. | inline rows |
+| `NextActionBar` | Sticky bottom action, appears when the inline CTA scrolls away. | — |
+| `EmptyLibrary` | Designed empty state, with live AniList artwork and a single import action. | `EmptyHero` |
+| `ImportDialog` | Rebuilt in the new language; same AniList flow. | `ImportDialog` |
 
-**One easing family.** `cubic-bezier(0.16, 1, 0.3, 1)` — expo-out — for
-everything. Four durations: `0.18` (feedback), `0.34` (UI), `0.62` (sections),
-`1.1` (cinematic entrances). When every transition decelerates on the same curve,
-the product feels choreographed even though it is just consistent.
+**Deleted outright:** `Atmosphere` (aurora/grain/vignette), `ContinueWatching`,
+`FranchiseMap`, `FilterRail`, `ProgressRingStat`, `SpotlightRail`, `Navbar`, the old
+`Artwork`, `Progress` and `Status`.
 
-**Four rules:**
+### Data plan (no architecture change)
 
-1. **Distance is small.** Entrances travel 14–18px. Premium motion is restraint,
-   not travel. Nothing slides in from off-screen.
-2. **Stagger is 55ms.** Enough to read as a cascade, never a slideshow. Capped
-   so a 40-item grid finishes settling in under a second.
-3. **Motion always answers a question** — *where did this come from?*, *is this
-   interactive?*, *what changed?* — and never decorates.
-4. **Two speeds per interaction.** Chrome moves in 300–500ms; artwork moves in
-   700–900ms. That contrast is what makes hover feel like a camera rather than
-   a hover state.
+- Keep `storydex:library:v1` and the `{username, importedAt, franchises}` shape, so
+  **existing persisted data loads unchanged.** `accentColor` stays additive and optional.
+- `lib/design.ts` keeps its public API (status, phase, progress, next-entry, formatting) —
+  the *semantics* are unchanged; only its `color` values are re-pointed at the new tokens.
+- `lib/franchise.ts`, `lib/anilist.ts`, `lib/useLibrary.ts`, `lib/storage.ts` keep their
+  contracts. `useDashboardControls` is superseded by `lib/libraryView.ts` (facet + sort +
+  density state, URL-synced).
+- **No fabricated library, no generated artwork.** Verified against real AniList data.
 
-**Signature interactions**
+---
 
-| Interaction | Behaviour |
+## Part 5 — Is this materially different?
+
+Checked against the previous implementation, point by point:
+
+| Requirement | Old | New |
+| --- | --- | --- |
+| Ground | violet-black, dark-only | warm paper light **+** warm-charcoal dark |
+| Hero | full-bleed 92svh backdrop + poster plate + rail | **no hero** — a ruled header sentence |
+| Poster wall | dense 2–6 col grid as the primary surface | covers at 76px in ruled rows; grid is one of three densities |
+| Typography | 11px mono labels everywhere | 12.5px minimum, one uppercase label per screen |
+| Stats | ring + ledger + 4 boxes | **one inline sentence** |
+| Card | poster with hover-reveal overlay | rectilinear card, ruler, one status word |
+| Detail | simultaneous columns, sticky sidebar | **five sequenced chapters** |
+| Timeline | scroll-drawn glowing road | format-labelled ruled timeline + composition strip |
+| Colour | black + violet + amber glow | paper + pine + clay, no glow |
+| Depth | aurora, grain, glass, glow | rules and tinted panels, one hover shadow |
+
+Different ground, different palette, different type system, different shape language,
+different page rhythm, different motion, different information architecture.
+
+---
+
+## Part 6 — Implementation status
+
+Built and verified in this order:
+
+| Area | State |
 | --- | --- |
-| Continue Watching staging | Crossfades backdrops over 1.1s; the story switches and the tint crossfades with it. Auto-advances every 8s — **paused on hover, on focus, and when the tab is hidden.** |
-| Hero entrance | Artwork settles from `scale(1.08)` over 1.6s; copy rises 18px behind it, 100ms later. |
-| Card hover | Artwork `1.045` / 900ms; detail layer fades up into reserved space; accent wash appears. Zero layout shift. |
-| Progress bars | Grow from `scaleX(0)` **once**, when scrolled into view, over 0.95s. They never re-animate. |
-| Filter change | The active underline slides between chips via a shared `layoutId`. |
-| Franchise Map | Road segments draw themselves downward, staggered as rows enter view. |
-| Route chrome | The navbar is transparent at the top of a page and condenses to glass after 24px. A 1px violet scroll-progress rule sits under it. |
-| Navigation | Active nav item is marked by a gradient hairline that shares a `layoutId` with its siblings. |
+| Tokens, themes, type scale, utilities | `app/globals.css` rewritten; both themes emit; `data-theme` on `<html>` |
+| Shell | `app/layout.tsx` + `AppShell` (masthead, library context, import dialogue, `MotionConfig reducedMotion="user"`) |
+| Routes | `/` · `/dashboard` · `/library` · `/franchises` · `/discover` · `/franchise/[id]`, all building |
+| Components | every item in the Part 4 table, plus `Statement`, `StoryViews` (grid/list/table) and `DiscoverBoard` |
+| Deleted | `Atmosphere`, `Artwork`, `ContinueWatching`, `FilterRail`, `FranchiseCard`, `FranchiseMap`, `Navbar`, `Progress`, `ProgressRingStat`, `SpotlightRail`, `Status`, `components/ui`, `lib/useDashboardControls` |
+| Data | unchanged: `storydex:library:v1`, `{username, importedAt, franchises}`, all `lib/*` contracts |
 
-Every one of these is disabled under `prefers-reduced-motion: reduce`, and every
-hover state has a `focus-visible` equivalent.
+### On artwork
 
----
-
-## 9. Mobile adaptation
-
-Mobile is the primary reading context for an anime tracker — people check what to
-watch from the couch. The layout is rebuilt, not shrunk.
-
-**Navigation.** Below `md`, the navbar collapses to wordmark + a hamburger that
-opens a **full-screen glass sheet**: 22px serif-weight links on hairlines, the
-tracked-story count, and a full-width import button. It is the same design
-language as the desktop nav, not a fallback.
-
-**Hero.** Posters stack under the copy full-bleed; the staging rail becomes a
-horizontally scrollable strip of 40px thumbnails. Text is inset by the shell
-gutter, artwork bleeds to the device edge — that bleed is what keeps the hero
-feeling cinematic on a 390px screen.
-
-**Cards.** 2 columns at the base size, because posters are the content and small
-posters are still readable, while 16px gutters keep them from feeling cramped.
-
-**Franchise detail, reordered.** The grid is 3 blocks with explicit per-breakpoint
-order:
-
-```
-mobile:        map  →  ledger  →  full record
-desktop:       map + full record (left)   |   sticky ledger (right)
-```
-
-**Franchise Map.** The road and the marker axis are fixed offsets, so the
-structure survives at any width; the metadata rail wraps under the title, the
-status column moves below the row. **Nothing is hidden** — the map is the reason
-to open a story, so it stays complete. Tap targets on node markers are 32px.
-
-**Entry sheet** becomes a bottom sheet at 86vh, rounded on the top corners only.
-
-**Everything important is ≥44px** on the touch axis, and no interaction depends
-on hover: the card’s detail layer is a bonus, never the only route to the next
-entry — the hero, the rail, the map and the row all carry that information
-independently.
+- `coverImage` is used everywhere a picture appears. `bannerImage` is preserved in the data
+  and in storage but is **not** rendered as a full-bleed backdrop: this design has no hero,
+  and reintroducing one to spend the banner would undo the difference this document exists
+  to make. Nothing derived, blurred or generated is drawn from a cover either.
+- There are no bundled image assets and no generated artwork anywhere in the app. Stories
+  with no artwork get the designed monogram plate from `Cover`.
 
 ---
 
-## 10. What to remove from the current design
+## Part 7 — Verification
 
-Deletions, with the reason. These are the changes that will do the most work.
+Because there is no bundled library, the build is checked two ways:
 
-| Remove | Why |
-| --- | --- |
-| **The 72px all-caps “YOUR STORIES” banner** | A dashboard is not a poster. It consumes the entire first viewport to say nothing the page does not already imply. Replaced by the Continue Watching hero. |
-| **Four equal stat boxes in a row** | Four numbers of equal weight = no hierarchy. Replaced by one ring (stories complete) and one proportional ledger. |
-| **The sticky glass control bar** | A floating panel that follows the scroll and contains a search field, ten chips and a sort menu is a toolbar, and toolbars read as admin. Filters now live inline with the shelf they control, as underlined text with counts. |
-| **Status pills with tinted backgrounds and borders** | `bg-blue/20 border border-blue/50` × 40 entries is badge soup. Replaced by a dot or a check plus a mono label. |
-| **Genre chip clouds** | Chips on hero sections are the single most reliable tell of a generated layout. Genres are now mono text with hairline separators. |
-| **The native `<select>` for sorting** | Instantly cheapens a careful interface. Replaced by a custom popover. |
-| **The rounded search input with an inset magnifier** | Replaced by a single underlined field with a mono prompt that lights up on focus — the top of a card catalogue drawer, which is the correct metaphor. |
-| **`material-symbols-outlined` ligature icons** | They were never loaded (the font is not in the project), so every status icon was rendering as raw text. Status is now drawn: SVG checks, CSS dots, `lucide-react` for controls. |
-| **Status rings and glows stacked on cards** | `hover:shadow-2xl hover:shadow-brand/20` plus a hover ring plus a translate plus a scale is four effects fighting. Now: one lift, one rim-light, one artwork scale. |
-| **`YOUR STORIES`, `LIBRARY`, `STATS` and `DISCOVER` as nav items** | `DISCOVER` and `STATS` both went nowhere. A nav that advertises absent features is worse than a short one. Replaced by Library + story count + keyboard-accessible search. |
-| **The Blurple CTA** (`#7c3aed → #5a00c6`) | Primary actions are now chalk-on-ink white pills: one per screen, which is why it can be quiet. |
-| **Multiple competing glows** (`shadow-brand-glow`, `shadow-brand-glow/20`, `animate-pulse` dots on everything) | Glow is now a single-pixel halo on the current entry, and a drop shadow on progress rings. Nothing else glows, so the things that do are unmistakable. |
-| **`.fade-in` / `.stagger-1..5` CSS animation utilities** | Two animation systems (CSS delays and Framer Motion) produced inconsistent timings. All motion now runs through `lib/motion.ts`. |
+1. **A throwaway harness** that replays a real AniList list payload — same field shape,
+   same CDN URL shape, real media ids and titles — through the *actual* `groupFranchises`
+   implementation, so the components were rendered against data the production import
+   produces. Every route was then fetched and inspected in the server-rendered HTML
+   (7 stories covering in progress, caught up with a not-yet-aired entry, finished,
+   stopped, planned, and a single long-running series), all three densities were rendered,
+   and the harness was deleted before commit.
+2. **`npm run verify:anilist -- <username>`**, which runs the real fetch → group → render
+   path against a live list and asserts the invariants plus reports state coverage.
 
-**Kept, deliberately:** the deep-night canvas and violet identity; the poster
-grid; the “Next to Watch” concept; and the honest local-storage-only import flow
-with its microcopy. The redesign is an evolution of the same product, not a
-different one.
-
----
-
-## Appendix — where things live
-
-```
-app/
-  layout.tsx              fonts, metadata, <Atmosphere />, theme colour
-  globals.css             the entire design system: tokens, utilities, keyframes
-  page.tsx                landing — the title card + live AniList artwork wall
-  dashboard/page.tsx      The Shelf (data derived in-file from the real library)
-  franchise/[id]/page.tsx hero → next plate → map → record → ledger
-components/
-  Atmosphere.tsx          aurora, horizon, vignette, grain
-  Artwork.tsx             Poster / Banner + isRemoteArtwork gate + derived hero
-  Status.tsx              StatusDot / StatusTag / YouAreHere
-  Progress.tsx            StoryBar / ProgressRing / Ledger
-  StoryCard.tsx           the franchise card
-  ContinueWatching.tsx    the cinematic hero + staging rail + caught-up state
-  FranchiseMap.tsx        the road, node vocabulary, entry sheet
-  FilterRail.tsx          search, filter chips, sort popover
-  ProgressRingStat.tsx    the dashboard's single hero statistic
-  SpotlightRail.tsx       live trending AniList art for pre-import screens
-  Navbar.tsx              condensing glass bar, scroll rule, mobile sheet
-lib/
-  anilist.ts              GraphQL client: library, media batch, spotlight
-  franchise.ts            relation-graph grouping → Franchise[]
-  design.ts               all status/phase/progress/format semantics
-  motion.ts               easing, durations, variants
-  storage.ts              localStorage persistence + artwork sanitisation
-  useLibrary.ts           reads the stored library (no bundled fallback)
-  useSpotlight.ts         one shared, cached spotlight request per page
-scripts/
-  verify-anilist.ts       runs the real data path against a live AniList user
-  loaders/ts-resolve.mjs  lets Node run the app's TS modules directly
-```
-
-Four conventions worth preserving:
-
-1. **No component decides what a status looks like.** It asks `lib/design.ts`.
-   That is why the dashboard, the cards and the map can never disagree.
-2. **No component hard-codes a colour.** Everything resolves through a token, so
-   the palette can be re-tuned in one place.
-3. **No component invents content.** Everything rendered comes from the AniList
-   API (the user's list, or the spotlight for pre-import screens). There is no
-   seeded fixture data anywhere in `app/`, `components/` or `lib/`.
-4. **No artwork is bundled.** `isRemoteArtwork()` is the only gate, and the
-   placeholder path is designed rather than empty.
-
----
-
-## Verifying against real AniList data
-
-Because the app renders real data exclusively, there is no sample library to
-eyeball the design against. Two ways to verify:
-
-**1. Import through the UI.** Paste an AniList username into the import dialog.
-That runs `fetchAniListLibrary` → `expandFranchises` → `groupFranchises` →
-`localStorage`, and the dashboard renders it.
-
-**2. The verification script** (needs network access, so run it locally — it
-cannot run in a sandbox that blocks egress):
-
-```
-npm run verify:anilist -- <anilist-username>
-```
-
-It imports the *same* modules the browser runs, then asserts the invariants the
-redesign depends on and reports the ones that are data-dependent:
-
-```
-✓ 1,284 list entries in 812ms
-✓ 96 stories from 1,284 entries
-✓ 41 multi-entry stories · largest: "One Piece" (14 entries)
-✓ every story has a remote AniList cover URL
-✓ no artwork references point at a local path
-✓ 62/96 stories have a real banner (65%) — the other 34 use the cover-derived fallback
-✓ 71/96 stories carry an AniList accent colour for their hero tint
-✓ complete: 23   watching: 14   caught-up: 9   dropped: 6 …
-! paused: 0 — this UI state is unexercised by this list
-✓ 37 stories feed Continue Watching / Up next
-✓ every continuable story resolves a next entry
-✓ formats present: MOVIE, ONA, OVA, SPECIAL, TV, TV_SHORT
-✓ 88 entries have no episode count (rendered as "Ep ?")
-```
-
-Two things make this worth having. First, a **failing** check exits non-zero, so
-it can gate CI (`✗ 2 continuable stories have no resolvable next entry`). Second,
-the **warnings matter as much as the passes** — a state with zero coverage is a
-state nobody has looked at, which is exactly how the caught-up and dropped
-branches got designed in the first place.
-
-It writes `.verify/library.json` (the exact payload the app persists to
-`localStorage`, so it can be pasted straight in for visual QA) and
-`.verify/report.json` (coverage summary). Both are gitignored.
+The empty library is treated as a first-class state, not an edge case: it is what every
+new user sees, and it is designed.

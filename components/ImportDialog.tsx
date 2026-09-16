@@ -2,46 +2,59 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, ArrowRight, Loader2, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, Loader2, X } from 'lucide-react'
 import { fetchAniListLibrary, AniListError } from '@/lib/anilist'
 import { groupFranchises, expandFranchises } from '@/lib/franchise'
 import { saveLibrary } from '@/lib/storage'
-import { EASE } from '@/lib/motion'
+import { DURATION, EASE } from '@/lib/motion'
+import { cn } from '@/lib/utils'
 
 /* ==========================================================================
    ImportDialog
    --------------------------------------------------------------------------
-   The first real interaction a new user has with StoryDex, so it sets the
-   tone: ink-black sheet, a single underlined field, an editorial headline,
-   and one filled button. No nested card, no border-on-border, no gradient
-   hero inside the modal.
+   A dialogue box, not a cinema. Paper sheet, one ruled field, one pine button,
+   and the sentence that matters: your library stays in this browser.
 
-   Deliberately kept the honest microcopy about local storage — the app has
-   no backend, and saying so is a feature.
+   The import runs in two visible stages — reading your list, then following
+   AniList's relation graph to group entries into stories — because the second
+   stage is the slow one and the reason to wait is the product's whole premise.
    ========================================================================== */
 
 interface ImportDialogProps {
   isOpen: boolean
   onClose: () => void
+  /** Pre-filled when re-importing an existing library. */
+  initialUsername?: string
+  /** True when there is already a library to replace. */
+  replacing?: boolean
 }
 
-export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
+type Stage = 'idle' | 'reading' | 'grouping'
+
+export function ImportDialog({
+  isOpen,
+  onClose,
+  initialUsername = '',
+  replacing = false,
+}: ImportDialogProps) {
   const router = useRouter()
-  const [username, setUsername] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [username, setUsername] = useState(initialUsername)
+  const [stage, setStage] = useState<Stage>('idle')
   const [error, setError] = useState<string | null>(null)
+  const busy = stage !== 'idle'
 
-  const handleImport = async () => {
-    if (!username.trim() || isLoading) return
+  async function handleImport() {
+    if (!username.trim() || busy) return
 
-    setIsLoading(true)
+    setStage('reading')
     setError(null)
 
     try {
       const entries = await fetchAniListLibrary(username)
-      const expandedEntries = await expandFranchises(entries)
-      const franchises = groupFranchises(expandedEntries)
+      setStage('grouping')
+      const expanded = await expandFranchises(entries)
+      const franchises = groupFranchises(expanded)
       saveLibrary(username.trim(), franchises)
       setUsername('')
       onClose()
@@ -53,12 +66,12 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
           : 'Something went wrong reaching AniList. Please try again.'
       setError(message)
     } finally {
-      setIsLoading(false)
+      setStage('idle')
     }
   }
 
-  const handleClose = () => {
-    if (isLoading) return
+  function handleClose() {
+    if (busy) return
     setError(null)
     onClose()
   }
@@ -68,153 +81,139 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-[80] bg-ink-950/80 backdrop-blur-xl"
+            className="fixed inset-0 z-[80] bg-ink/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: DURATION.overlay }}
             onClick={handleClose}
           />
 
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="import-title"
-            className="pointer-events-none fixed inset-0 z-[81] grid place-items-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
+          <div className="pointer-events-none fixed inset-0 z-[81] grid place-items-center overflow-y-auto p-4">
             <motion.div
-              className="grain glass rim pointer-events-auto relative w-full max-w-[480px] overflow-hidden rounded-[28px] p-7 md:p-9"
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.98 }}
-              transition={{ duration: 0.42, ease: EASE }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="import-title"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: DURATION.overlay, ease: EASE }}
+              className="pointer-events-auto relative w-full max-w-[460px] rounded-md border border-rule-strong bg-surface lift"
             >
-              {/* Violet bloom in the corner — one soft light source. */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full blur-[70px]"
-                style={{ background: 'radial-gradient(circle, rgba(113,55,234,0.5), transparent 70%)' }}
-              />
-
-              <div className="relative">
-                <div className="flex items-start justify-between gap-6">
-                  <div>
-                    <span className="label text-brand-300">AniList</span>
-                    <h2
-                      id="import-title"
-                      className="text-editorial mt-3 text-[30px] leading-[1.05] text-chalk"
-                    >
-                      Bring your list across
-                    </h2>
-                    <p className="mt-3 max-w-[38ch] text-body-sm leading-relaxed text-mist">
-                      StoryDex reads your public AniList list and regroups every entry into the
-                      franchises they belong to.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={isLoading}
-                    aria-label="Close"
-                    className="grid size-9 shrink-0 place-items-center rounded-full text-mist transition-colors hover:bg-white/[0.07] hover:text-chalk disabled:opacity-40"
+              {/* ── Corner ruled like a catalogue card ─────────────────── */}
+              <div className="flex items-start justify-between gap-6 border-b border-rule px-6 pt-6 pb-5">
+                <div>
+                  <p className="eyebrow">AniList</p>
+                  <h2
+                    id="import-title"
+                    className="mt-2.5 text-title font-semibold text-ink"
                   >
-                    <X className="size-4" />
-                  </button>
+                    {replacing ? 'Replace your library' : 'Bring your list across'}
+                  </h2>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={busy}
+                  aria-label="Close"
+                  className="-mr-1.5 -mt-1 grid size-8 shrink-0 place-items-center rounded-sm text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-40"
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              </div>
+
+              <div className="px-6 py-6">
+                <p className="reading max-w-[44ch] text-ink-2">
+                  StoryDex reads your public list and regroups every entry into the franchises they
+                  belong to — so a story reads as one story, not twelve rows.
+                </p>
 
                 {/* The field is a rule, not a box. */}
-                <div className="mt-8">
-                  <label htmlFor="anilist-username" className="label text-veil">
-                    Username
+                <div className="mt-7">
+                  <label
+                    htmlFor="anilist-username"
+                    className="text-micro font-semibold uppercase tracking-[0.08em] text-ink-3"
+                  >
+                    AniList username
                   </label>
-                  <div className="relative mt-3">
-                    <input
-                      id="anilist-username"
-                      type="text"
-                      autoComplete="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      placeholder="your-anilist-handle"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value)
-                        if (error) setError(null)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && username.trim() && !isLoading) handleImport()
-                      }}
-                      disabled={isLoading}
-                      aria-invalid={!!error}
-                      className="w-full bg-transparent pb-3 text-[19px] text-chalk placeholder:text-veil/70 focus:outline-none disabled:opacity-50"
-                    />
-                    <span className="absolute inset-x-0 bottom-0 h-px bg-white/[0.12]" />
-                    <motion.span
-                      className="absolute inset-x-0 bottom-0 h-px origin-left bg-gradient-to-r from-brand-500 via-brand-300 to-transparent"
-                      initial={false}
-                      animate={{ scaleX: error ? 0 : username ? 1 : 0.25 }}
-                      transition={{ duration: 0.45, ease: EASE }}
-                    />
-                  </div>
-                  {!error && (
-                    <p className="mt-3 text-[12px] text-veil">
-                      Public lists only. Nothing is sent to a StoryDex server — your library is kept
-                      in this browser.
-                    </p>
-                  )}
+                  <input
+                    id="anilist-username"
+                    type="text"
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    placeholder="your-anilist-handle"
+                    value={username}
+                    onChange={(event) => {
+                      setUsername(event.target.value)
+                      if (error) setError(null)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') handleImport()
+                    }}
+                    disabled={busy}
+                    aria-invalid={Boolean(error)}
+                    className={cn(
+                      'mt-2.5 w-full border-b bg-transparent pb-2 text-lead text-ink placeholder:text-ink-3 focus:outline-none disabled:opacity-50',
+                      error ? 'border-state-stopped' : 'border-rule-strong focus:border-brand',
+                    )}
+                  />
+                  <p className="mt-3 text-small leading-relaxed text-ink-3">
+                    Public lists only. Nothing is sent to a StoryDex server — your library is kept
+                    in this browser.
+                  </p>
                 </div>
 
                 <AnimatePresence>
                   {error && (
                     <motion.div
-                      initial={{ opacity: 0, y: -6, height: 0 }}
-                      animate={{ opacity: 1, y: 0, height: 'auto' }}
-                      exit={{ opacity: 0, y: -6, height: 0 }}
-                      transition={{ duration: 0.3, ease: EASE }}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2, ease: EASE }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-5 flex items-start gap-2.5 rounded-2xl bg-coral/[0.09] px-4 py-3">
-                        <AlertCircle className="mt-0.5 size-4 shrink-0 text-coral" aria-hidden />
-                        <p className="text-body-sm text-chalk/90">{error}</p>
-                      </div>
+                      <p className="mt-5 flex items-start gap-2.5 border-l-2 border-state-stopped pl-3 text-body text-ink">
+                        <AlertCircle
+                          className="mt-0.5 size-4 shrink-0 text-state-stopped"
+                          aria-hidden
+                        />
+                        {error}
+                      </p>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+                {busy && (
+                  <p className="mt-5 flex items-center gap-2.5 text-body text-ink-2">
+                    <Loader2 className="size-4 animate-spin text-brand" aria-hidden />
+                    {stage === 'reading'
+                      ? `Reading ${username.trim()}'s list…`
+                      : 'Following the relation graph to group stories…'}
+                  </p>
+                )}
+
+                <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={handleClose}
-                    disabled={isLoading}
-                    className="h-12 flex-1 rounded-full bg-white/[0.06] text-[15px] font-medium text-chalk transition-colors hover:bg-white/[0.12] disabled:opacity-50"
+                    disabled={busy}
+                    className="inline-flex h-10 items-center justify-center rounded-sm border border-rule-strong px-5 text-body font-medium text-ink transition-colors hover:bg-sunk disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleImport}
-                    disabled={!username.trim() || isLoading}
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-chalk text-[15px] font-semibold text-ink-950 transition-all duration-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
+                    disabled={!username.trim() || busy}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-sm bg-brand px-5 text-body font-medium text-brand-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                        Reading list…
-                      </>
-                    ) : (
-                      <>
-                        Import
-                        <ArrowRight className="size-4" />
-                      </>
-                    )}
+                    {busy ? 'Importing…' : replacing ? 'Replace library' : 'Import library'}
                   </button>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

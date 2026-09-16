@@ -7,11 +7,12 @@ import type { Franchise, Season } from './franchise'
    dashboard, the cards and the Franchise Map can never disagree.
 
    Colour logic (deliberate, and the core of the system):
-     violet  = identity + chrome. Never a status.
-     jade    = finished  (the reward colour)
-     ember   = YOU ARE HERE / watch next  (the single warm accent)
-     lilac   = planned later
-     ghost   = not released / not started
+     ink greys = chrome. Never a status.
+     pine      = finished
+     clay      = YOU ARE HERE — the single warm accent in the product
+     ochre     = planned later
+     blue-slate= caught up (nothing left that exists yet)
+     grey      = not released / not started
    ========================================================================== */
 
 export type EntryStatus =
@@ -37,13 +38,13 @@ export interface StatusVisual {
 }
 
 const STATUS_VISUALS: Record<EntryStatus, StatusVisual> = {
-  watched: { label: 'Watched', tag: 'WATCHED', color: 'var(--color-jade)', dim: false, live: false },
-  watching: { label: 'Watching now', tag: 'WATCHING', color: 'var(--color-ember)', dim: false, live: true },
-  planned: { label: 'Planned', tag: 'PLANNED', color: 'var(--color-lilac)', dim: true, live: false },
-  upcoming: { label: 'Not aired yet', tag: 'UPCOMING', color: 'var(--color-veil)', dim: true, live: false },
-  unwatched: { label: 'Not started', tag: 'BACKLOG', color: 'var(--color-veil)', dim: true, live: false },
-  paused: { label: 'Paused', tag: 'PAUSED', color: 'var(--color-slate)', dim: true, live: false },
-  dropped: { label: 'Dropped', tag: 'DROPPED', color: 'var(--color-coral)', dim: true, live: false },
+  watched: { label: 'Watched', tag: 'WATCHED', color: 'var(--state-done)', dim: false, live: false },
+  watching: { label: 'Watching', tag: 'WATCHING', color: 'var(--state-progress)', dim: false, live: true },
+  planned: { label: 'Planned', tag: 'PLANNED', color: 'var(--state-planned)', dim: true, live: false },
+  upcoming: { label: 'Not aired', tag: 'NOT AIRED', color: 'var(--state-idle)', dim: true, live: false },
+  unwatched: { label: 'Not started', tag: 'NOT STARTED', color: 'var(--state-idle)', dim: true, live: false },
+  paused: { label: 'Paused', tag: 'PAUSED', color: 'var(--state-paused)', dim: true, live: false },
+  dropped: { label: 'Stopped', tag: 'STOPPED', color: 'var(--state-stopped)', dim: true, live: false },
 }
 
 export const CURRENT_YEAR = new Date().getFullYear()
@@ -243,13 +244,13 @@ export function getStoryPhase(franchise: Franchise): StoryPhase {
 }
 
 const PHASE_COPY: Record<StoryPhase, { label: string; color: string }> = {
-  complete: { label: 'Complete', color: 'var(--color-jade)' },
-  watching: { label: 'In progress', color: 'var(--color-ember)' },
-  'caught-up': { label: 'Caught up', color: 'var(--color-azure)' },
-  dropped: { label: 'Dropped', color: 'var(--color-coral)' },
-  paused: { label: 'Paused', color: 'var(--color-slate)' },
-  backlog: { label: 'Backlog', color: 'var(--color-mist)' },
-  planned: { label: 'Planned', color: 'var(--color-lilac)' },
+  complete: { label: 'Finished', color: 'var(--state-done)' },
+  watching: { label: 'In progress', color: 'var(--state-progress)' },
+  'caught-up': { label: 'Caught up', color: 'var(--state-caughtup)' },
+  dropped: { label: 'Stopped', color: 'var(--state-stopped)' },
+  paused: { label: 'Paused', color: 'var(--state-paused)' },
+  backlog: { label: 'Not started', color: 'var(--state-idle)' },
+  planned: { label: 'Planned', color: 'var(--state-planned)' },
 }
 
 export function phaseCopy(phase: StoryPhase) {
