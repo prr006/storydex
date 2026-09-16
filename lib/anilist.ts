@@ -79,6 +79,10 @@ export interface AniListMedia {
   bannerImage: string | null
   siteUrl: string | null
   status: AniListMediaAiringStatus | null
+  /** AniList community score, 0–100. */
+  averageScore: number | null
+  /** How many AniList users have this on a list. */
+  popularity: number | null
   relations: { edges: AniListRelationEdge[] } | null
 }
 
@@ -273,4 +277,162 @@ export async function fetchMediaByIds(ids: number[]): Promise<AniListMedia[]> {
   }
 
   return results
+}
+
+// ---------------------------------------------------------------------------
+// Spotlight — a small slice of real AniList data used to give pre-import
+// screens genuine artwork. This is the only "content" the app renders that
+// doesn't come from the user's own list, and it is always live from the API:
+// nothing about it is hard-coded or bundled.
+// ---------------------------------------------------------------------------
+
+const SPOTLIGHT_QUERY = `
+query ($page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+      id
+      idMal
+      title {
+        romaji
+        english
+        native
+      }
+      format
+      status
+      episodes
+      duration
+      seasonYear
+      season
+      averageScore
+      popularity
+      startDate {
+        year
+        month
+        day
+      }
+      genres
+      description(asHtml: false)
+      coverImage {
+        large
+        extraLarge
+        color
+      }
+      bannerImage
+      siteUrl
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            type
+            format
+            title {
+              romaji
+              english
+              native
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
+
+/**
+ * Fetches trending anime straight from AniList.
+ *
+ * Deliberately returns `[]` on failure rather than throwing: every caller is a
+ * decorative surface (the landing artwork wall, the empty dashboard), and a
+ * screensaver must never block a page from rendering.
+ */
+/* --------------------------------------------------------------------------
+   Discover
+   --------------------------------------------------------------------------
+   Three lists, one request. AniList lets several `Page` blocks be aliased in a
+   single query, so Trending / This season / Not yet aired arrive together and
+   the Discover page costs exactly one round trip.
+
+   Like the spotlight, this never throws: Discover is a place to browse, and a
+   failed request should leave the page standing with an honest note rather than
+   an error screen.
+   -------------------------------------------------------------------------- */
+
+export type DiscoverSeason = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL'
+
+export interface DiscoverBoards {
+  trending: AniListMedia[]
+  seasonal: AniListMedia[]
+  upcoming: AniListMedia[]
+  /** The season the `seasonal` board was queried for. */
+  season: DiscoverSeason
+  seasonYear: number
+}
+
+const DISCOVER_QUERY = `
+query ($perPage: Int, $season: MediaSeason, $seasonYear: Int) {
+  trending: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+  seasonal: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+  upcoming: Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC, isAdult: false) {${MEDIA_FIELDS}}
+  }
+}
+`
+
+/** The AniList season a given month falls in. */
+export function seasonOf(date = new Date()): { season: DiscoverSeason; year: number } {
+  const month = date.getMonth() // 0-based
+  const season: DiscoverSeason =
+    month <= 2 ? 'WINTER' : month <= 5 ? 'SPRING' : month <= 8 ? 'SUMMER' : 'FALL'
+  return { season, year: date.getFullYear() }
+}
+
+interface DiscoverResponse {
+  trending: { media: AniListMedia[] } | null
+  seasonal: { media: AniListMedia[] } | null
+  upcoming: { media: AniListMedia[] } | null
+}
+
+function usable(media: AniListMedia[] | undefined): AniListMedia[] {
+  return (media ?? []).filter(
+    (item) => Boolean(item.coverImage?.extraLarge || item.coverImage?.large),
+  )
+}
+
+export async function fetchDiscoverAnime(perPage = 12): Promise<DiscoverBoards> {
+  const { season, year } = seasonOf()
+  const empty: DiscoverBoards = { trending: [], seasonal: [], upcoming: [], season, seasonYear: year }
+
+  try {
+    const data = await graphqlRequest<DiscoverResponse>(DISCOVER_QUERY, {
+      perPage,
+      season,
+      seasonYear: year,
+    })
+    return {
+      trending: usable(data.trending?.media),
+      seasonal: usable(data.seasonal?.media),
+      upcoming: usable(data.upcoming?.media),
+      season,
+      seasonYear: year,
+    }
+  } catch {
+    return empty
+  }
+}
+
+export async function fetchSpotlightAnime(perPage = 12): Promise<AniListMedia[]> {
+  try {
+    const data = await graphqlRequest<{ Page: { media: AniListMedia[] } | null }>(
+      SPOTLIGHT_QUERY,
+      { page: 1, perPage },
+    )
+    return data.Page?.media?.filter((media) => Boolean(media.coverImage?.extraLarge || media.coverImage?.large)) ?? []
+  } catch {
+    return []
+  }
 }

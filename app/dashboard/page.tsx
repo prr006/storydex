@@ -1,321 +1,201 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Search,
-  Library,
-  BookOpen,
-  Play,
-  CheckCircle2,
-  Film,
-  LayoutGrid,
-  TrendingUp,
-  Clock,
-  Eye,
-  BarChart3,
-  PlayCircle,
-  HotelClass,
-} from 'lucide-react'
-import { Navbar } from '@/components/Navbar'
-import { ImportDialog } from '@/components/ImportDialog'
-import { FranchiseCard } from '@/components/FranchiseCard'
-import { useLibrary } from '@/lib/useLibrary'
-import {
-  useDashboardControls,
-  FILTER_CHIPS,
-  SORT_OPTIONS,
-  type SortOption,
-} from '@/lib/useDashboardControls'
+import Link from 'next/link'
+import { useLibraryContext } from '@/components/AppShell'
+import { StoryStage } from '@/components/StoryStage'
+import { StoryLadder } from '@/components/StoryLadder'
+import { StoryObject } from '@/components/StoryObject'
+import { Horizon } from '@/components/Horizon'
+import { Rail, RailSection } from '@/components/Rail'
+import { EmptyLibrary } from '@/components/EmptyLibrary'
+import { Atmosphere } from '@/components/Atmosphere'
+import { announcedEntries, upcomingEntries } from '@/lib/queue'
+import { continueWatching, libraryTotals } from '@/lib/summaries'
+import { getEntryStatus, getStoryPhase, getStoryProgress, isUpcoming } from '@/lib/design'
+import type { Franchise } from '@/lib/franchise'
 
-// ─── Animation variants ──────────────────────────────────────────────────────
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, delay: i * 0.1, ease: 'easeOut' },
-  }),
-}
+/* ==========================================================================
+   Home — /dashboard
+   --------------------------------------------------------------------------
+   Five movements, each with its own visual rhythm. Nothing here repeats the
+   shape of the thing above it, which is what keeps the page from reading as
+   "hero, then rails, then a grid":
 
-// ─── Stat card icon map ───────────────────────────────────────────────────────
-const PRIMARY_ICONS = [Library, BookOpen, Play, CheckCircle2, Film]
+     1  STAGE      one story owns the screen, and you can move between stories
+                   without leaving the page
+     2  LADDER     every other active story as a full-width rung — artwork
+                   bleeding, facts floating, the path running underneath
+     3  HORIZON    what's ahead — rows for what exists, years for what doesn't
+     4  ARCHIVE    your collection as story objects (covers fanned, paths drawn)
+     5  COLLECTIONS the same objects, larger, for the stories with real depth
 
-export default function Dashboard() {
-  const [isImportOpen, setIsImportOpen] = useState(false)
-  const { franchises, isImported, loading } = useLibrary()
+   The old composition (hero → rail → rail → grid → cards) is gone: a rail of
+   cards is the one thing every media product already looks like, and StoryDex's
+   whole claim is that a franchise is a *story*, not a tile.
+   ========================================================================== */
 
-  const { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered } =
-    useDashboardControls(franchises)
+export default function DashboardPage() {
+  const { library, openImport } = useLibraryContext()
+  const { franchises, loading, isImported } = library
 
-  const { stats, secondaryStats } = useMemo(() => {
-    let totalEntries = 0
-    let watching = 0
-    let completed = 0
-    let movies = 0
-    let completedStories = 0
-    let storiesInProgress = 0
-    let upcomingReleases = 0
-    let unwatchedEntries = 0
-    let totalCompletionPercentage = 0
+  if (loading) return <HomeLoading />
 
-    const currentYear = new Date().getFullYear()
+  if (!isImported || franchises.length === 0) {
+    return <EmptyLibrary onImport={openImport} />
+  }
 
-    for (const franchise of franchises) {
-      totalEntries += franchise.seasons.length
-
-      if (franchise.totalSeasons > 0) {
-        totalCompletionPercentage += franchise.completedSeasons / franchise.totalSeasons
-        if (franchise.completedSeasons === franchise.totalSeasons) {
-          completedStories += 1
-        } else if (franchise.completedSeasons > 0) {
-          storiesInProgress += 1
-        }
-      }
-
-      for (const season of franchise.seasons) {
-        if (season.status === 'CURRENT') watching += 1
-        if (season.completed) completed += 1
-        if (season.format === 'MOVIE') movies += 1
-
-        const isUpcoming =
-          season.airingStatus === 'NOT_YET_RELEASED' ||
-          (!season.airingStatus && season.year > currentYear)
-        if (isUpcoming) {
-          upcomingReleases += 1
-        } else if (season.isExpanded || !season.status) {
-          unwatchedEntries += 1
-        }
-      }
-    }
-
-    const avgCompletion =
-      franchises.length > 0
-        ? Math.round((totalCompletionPercentage / franchises.length) * 100)
-        : 0
-
-    return {
-      stats: [
-        { label: 'Total Stories', value: franchises.length || totalEntries },
-        { label: 'Completion', value: `${avgCompletion}%` },
-        { label: 'Active', value: watching },
-        { label: 'Upcoming', value: upcomingReleases || 5 },
-      ],
-      secondaryStats: [
-        { label: 'AniList Entries', value: totalEntries },
-        { label: 'Completed', value: completed },
-        { label: 'Movies', value: movies },
-        { label: 'In Progress', value: storiesInProgress },
-        { label: 'Not Watched', value: unwatchedEntries },
-      ],
-    }
-  }, [franchises])
+  const active = continueWatching(franchises)
+  const totals = libraryTotals(franchises)
+  const stageStories = (active.length > 0 ? active : franchises).slice(0, 6)
+  const ladder = active.slice(1)
+  // The queue in two honest halves: stories you could start or restart now, and
+  // entries that have not aired. Anything you are already inside is in the
+  // ladder above, so it is kept out of both.
+  const queued = upcomingEntries(franchises, stageStories[0]?.id)
+  const activeIds = new Set(active.map((franchise) => franchise.id))
+  const ready = queued.filter(
+    (row) =>
+      !isUpcoming(row.entry) &&
+      getEntryStatus(row.entry) !== 'watching' &&
+      !activeIds.has(row.franchise.id),
+  )
+  const ahead = announcedEntries(franchises)
+  const archive = sortForArchive(franchises).slice(0, 12)
+  const collections = [...franchises]
+    .filter((franchise) => franchise.seasons.length > 1)
+    .sort((a, b) => b.seasons.length - a.seasons.length)
+    .slice(0, 6)
 
   return (
-    <div className="min-h-screen bg-background text-on-surface font-body-md pb-safe">
-      <Navbar onImportClick={() => setIsImportOpen(true)} />
+    <div>
+      {/* 1 ── The stage */}
+      <StoryStage stories={stageStories} />
 
-      {/* Main Content Area */}
-      <main className="pt-32 md:pt-32 pb-24 px-gutter-mobile md:px-gutter-desktop max-w-container-max mx-auto w-full">
-        
-        {/* Demo data banner */}
-        {!loading && !isImported && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-surface/50 px-5 py-3"
-          >
-            <p className="text-sm text-on-surface-variant/70">
-              You&apos;re viewing example data.{' '}
-              <span className="hidden sm:inline">Import your AniList list to see your own library.</span>
-            </p>
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="shrink-0 text-sm font-medium text-primary hover:text-primary-fixed-dim transition-colors"
-            >
-              Import Now →
-            </button>
-          </motion.div>
-        )}
-
-        {/* Header & Stats Summary */}
-        <div className="mb-12 fade-in stagger-1">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 w-full">
-            <div className="flex-shrink-0">
-              <h1 className="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-on-surface mb-4 uppercase tracking-tighter">
-                YOUR STORIES
-              </h1>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto flex-grow justify-end">
-              {stats.map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  custom={i}
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  className="bg-surface/50 border border-white/5 rounded-xl p-4 flex flex-col justify-center items-start md:items-center"
-                >
-                  <span className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase tracking-widest">
-                    {stat.label}
-                  </span>
-                  <span className={`font-headline-lg text-headline-lg ${
-                    stat.label === 'Completion' ? 'text-primary-fixed-dim' :
-                    stat.label === 'Active' ? 'text-status-watching' :
-                    stat.label === 'Upcoming' ? 'text-status-planning' :
-                    'text-on-surface'
-                  }`}>
-                    {stat.value}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Sticky Controls Bar */}
-        <div className="glass-panel sticky top-16 z-40 rounded-xl mb-12 p-4 shadow-lg fade-in stagger-2">
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            {/* Search */}
-            <div className="relative w-full lg:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground opacity-40" />
-              <input
-                className="w-full bg-background border border-white/10 rounded-lg pl-12 pr-4 py-3 text-body-sm focus:ring-2 focus:ring-primary-container/50 focus:border-transparent transition-all outline-none placeholder:text-on-surface-variant/40 text-on-surface"
-                placeholder="Search your collection..."
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search your collection"
-              />
-            </div>
-            
-            {/* Filters & Sort */}
-            <div className="flex w-full lg:w-auto items-center gap-3 overflow-x-auto scrollbar-none pb-2 lg:pb-0">
-              {FILTER_CHIPS.map((chip) => (
-                <button
-                  key={chip.value}
-                  onClick={() => setActiveFilter(chip.value)}
-                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-data-tabular text-data-tabular transition-all hover:scale-[1.03] active:translate-y-px ${
-                    activeFilter === chip.value
-                      ? 'bg-primary-container text-white shadow-[0_0_15px_rgba(124,58,237,0.25)]'
-                      : 'border border-white/10 text-on-surface-variant hover:bg-white/10 hover:text-on-surface'
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
-              <div className="w-px h-6 bg-white/10 mx-2 shrink-0" />
-              <button className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-white/10 text-on-surface-variant hover:bg-white/10 transition-all">
-                <span className="text-sm">sort</span>
-                <span className="font-data-tabular text-data-tabular capitalize">{sort}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Continue Watching Section */}
-        {filtered.some(f => f.nextToWatch) && (
-          <section className="mb-16 fade-in stagger-3">
-            <h2 className="font-section-header text-section-header text-on-surface mb-6 flex items-center gap-3">
-              <PlayCircle className="text-primary-container w-6 h-6" />
-              Continue Watching
-            </h2>
-            <div className="flex overflow-x-auto gap-6 pb-6 scrollbar-none snap-x snap-mandatory">
-              {filtered.filter(f => f.nextToWatch).slice(0, 5).map((franchise) => {
-                const pct = franchise.totalSeasons > 0
-                  ? (franchise.completedSeasons / franchise.totalSeasons) * 100
-                  : 0
-                return (
-                  <motion.a
-                    key={franchise.id}
-                    href={`/franchise/${franchise.id}`}
-                    className="snap-start shrink-0 w-[280px] md:w-[360px] group relative rounded-2xl overflow-hidden bg-surface border border-white/10 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand/20 cursor-pointer flex flex-col h-full"
-                    whileHover={{ y: -6 }}
-                  >
-                    <div className="aspect-[16/9] relative overflow-hidden shrink-0">
-                      <div 
-                        className="bg-cover bg-center w-full h-full transform transition-transform duration-700 group-hover:scale-105"
-                        style={{ backgroundImage: `url(${franchise.bannerUrl || franchise.posterUrl})` }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent" />
-                      <div className="absolute top-3 left-3 bg-surface/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded font-label-caps text-label-caps text-on-surface uppercase flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-status-watching animate-pulse" />
-                        {franchise.completedSeasons}/{franchise.totalSeasons} Entries
-                      </div>
-                    </div>
-                    <div className="p-5 flex flex-col flex-grow bg-surface z-10 -mt-6 relative">
-                      <h3 className="font-headline-lg text-section-header text-on-surface truncate mb-1">
-                        {franchise.name}
-                      </h3>
-                      <p className="font-body-sm text-body-sm text-on-surface-variant truncate mb-4">
-                        {franchise.genres.slice(0, 3).join(' • ')}
-                      </p>
-                      <div className="mt-auto">
-                        <div className="flex justify-between items-end mb-2">
-                          <span className="font-data-tabular text-data-tabular text-primary-fixed-dim">
-                            Next: {franchise.nextToWatch?.name || 'Unknown'}
-                          </span>
-                          <span className="font-data-tabular text-data-tabular text-on-surface-variant">
-                            {Math.round(pct)}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-muted-deep rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-secondary-container to-primary-container rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)]"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.a>
-                )
-              })}
+      <div className="shell pb-24">
+        {/* 2 ── The ladder */}
+        {ladder.length > 0 && (
+          <section className="mt-16">
+            <SectionHead
+              title="Part-way through"
+              meta={`${ladder.length} more ${ladder.length === 1 ? 'story' : 'stories'} started but not finished`}
+              action={{ href: '/library?status=watching', label: 'See all' }}
+            />
+            <div className="mt-6">
+              <StoryLadder stories={ladder} />
             </div>
           </section>
         )}
 
-        {/* Full Collection Grid */}
-        <section className="fade-in stagger-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-section-header text-section-header text-on-surface">Full Collection</h2>
-            <div className="flex gap-2">
-              <button className="p-2 rounded-lg bg-surface border border-white/10 text-on-surface-variant hover:text-primary transition-colors">
-                <LayoutGrid className="w-5 h-5" />
-              </button>
+        {/* 3 ── The horizon */}
+        {(ready.length > 0 || ahead.length > 0) && (
+          <section className="mt-20">
+            <SectionHead
+              title="Up next"
+              meta="Stories waiting to be started, and entries that haven't aired"
+            />
+            <div className="mt-6">
+              <Horizon ready={ready.slice(0, 5)} ahead={ahead.slice(0, 9)} />
             </div>
-          </div>
-          
-          {filtered.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {filtered.map((franchise, i) => (
-                <FranchiseCard key={franchise.id} franchise={franchise} index={i} />
-              ))}
-            </div>
-          ) : !loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center py-24 text-center"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-surface border border-white/10 flex items-center justify-center mb-4">
-                <Search className="w-6 h-6 text-muted-foreground/50" />
-              </div>
-              <p className="text-on-surface/80 font-medium mb-1">No results found</p>
-              <p className="text-sm text-on-surface-variant mb-5">
-                Try a different search term or adjust the active filter.
-              </p>
-              <button
-                onClick={() => { setQuery(''); setActiveFilter('all') }}
-                className="text-sm font-medium text-primary hover:text-primary-fixed-dim transition-colors"
-              >
-                Clear filters
-              </button>
-            </motion.div>
-          ) : null}
-        </section>
-      </main>
+          </section>
+        )}
 
-      <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+        {/* 4 ── The archive */}
+        <section className="mt-20">
+          <SectionHead
+            title="Your archive"
+            meta={`${totals.stories} stories · ${totals.episodes.toLocaleString('en-US')} episodes tracked`}
+            action={{ href: '/library', label: 'Open the library' }}
+          />
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {archive.slice(0, 6).map((franchise, index) => (
+              <StoryObject key={franchise.id} franchise={franchise} index={index} />
+            ))}
+          </div>
+        </section>
+
+        {/* 5 ── Collections */}
+        {collections.length > 0 && (
+          <section className="mt-20">
+            <SectionHead
+              title="Stories with depth"
+              meta="Franchises of more than one entry — the ones you can get lost in"
+              action={{ href: '/franchises', label: 'All collections' }}
+            />
+            <div className="mt-6">
+              <Rail itemWidth={380} controls>
+                {collections.map((franchise, index) => (
+                  <div key={franchise.id} className="w-[340px] shrink-0 snap-start sm:w-[380px]">
+                    <StoryObject franchise={franchise} index={index} variant="feature" />
+                  </div>
+                ))}
+              </Rail>
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+function SectionHead({
+  title,
+  meta,
+  action,
+}: {
+  title: string
+  meta?: string
+  action?: { href: string; label: string }
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h2 className="text-head font-bold text-ink">{title}</h2>
+        {meta && <p className="text-small text-ink-3">{meta}</p>}
+      </div>
+      {action && (
+        <Link
+          href={action.href}
+          className="group/all inline-flex items-center gap-1.5 text-small font-medium text-ink-2 transition-colors hover:text-ink"
+        >
+          {action.label}
+          <span aria-hidden className="transition-transform duration-200 group-hover/all:translate-x-0.5">
+            →
+          </span>
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Archive order: what you are inside, then what has the most left to give.
+ * A finished one-entry film is a fine thing to own, but it isn't what you came
+ * to the page for.
+ */
+function sortForArchive(franchises: Franchise[]): Franchise[] {
+  const weight = (franchise: Franchise) => {
+    const phase = getStoryPhase(franchise)
+    const progress = getStoryProgress(franchise)
+    const phaseScore =
+      phase === 'watching' ? 0 : phase === 'caught-up' ? 1 : phase === 'paused' ? 3 : phase === 'backlog' ? 4 : phase === 'planned' ? 5 : phase === 'dropped' ? 6 : 2
+    return phaseScore * 100 + (1 - progress.ratio) * 10 - franchise.seasons.length * 0.1
+  }
+  return [...franchises].sort((a, b) => weight(a) - weight(b) || a.name.localeCompare(b.name))
+}
+
+function HomeLoading() {
+  return (
+    <div>
+      <div className="relative h-[clamp(32rem,70vh,44rem)] w-full overflow-hidden">
+        <Atmosphere />
+        <div className="shell flex h-full flex-col justify-center">
+          <div className="h-4 w-40 animate-pulse rounded-sm bg-surface-2" />
+          <div className="mt-5 h-20 w-[36rem] max-w-full animate-pulse rounded-md bg-surface-2" />
+          <div className="mt-6 h-4 w-72 animate-pulse rounded-sm bg-surface-2" />
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,141 +1,126 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Navbar } from '@/components/Navbar'
-import { ImportDialog } from '@/components/ImportDialog'
-import { Button } from '@/components/ui/button'
-import { ArrowRight, Layers, BarChart3, ListChecks } from 'lucide-react'
+import { useLibraryContext } from '@/components/AppShell'
+import { EmptyLibrary } from '@/components/EmptyLibrary'
+import { StoryHero } from '@/components/StoryHero'
+import { StoryLadder } from '@/components/StoryLadder'
+import { Atmosphere } from '@/components/Atmosphere'
+import { continueWatching, libraryTotals } from '@/lib/summaries'
 
-const features = [
-  {
-    icon: Layers,
-    title: 'Group by Franchise',
-    description: 'See every season of a franchise together instead of scattered list entries.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Track Progress',
-    description: 'Monitor your completion across each franchise with story-level stats.',
-  },
-  {
-    icon: ListChecks,
-    title: "Know What's Next",
-    description: 'Always know which entry to watch next with smart sequencing.',
-  },
-]
+/* ==========================================================================
+   Welcome — /
+   --------------------------------------------------------------------------
+   Two states, and the difference matters:
 
-export default function LandingPage() {
-  const [isImportOpen, setIsImportOpen] = useState(false)
+     no library  → the pitch, the import, and real AniList artwork (delegated
+                   entirely to EmptyLibrary, which is also the empty state for
+                   Home, Library and Collections)
+     library     → the story you were last inside, entered at full size, then
+                   the rest of the stories you are inside
+
+   A returning user should never be greeted with marketing copy for a product
+   they already use, and never with a heading where artwork should be. So this
+   page is the front door of Home: one story owns the screen, the others follow
+   as rungs, and the three destinations sit quietly at the foot.
+   ========================================================================== */
+
+export default function WelcomePage() {
+  const { library, openImport } = useLibraryContext()
+  const { franchises, loading, isImported } = library
+
+  if (loading) {
+    return (
+      <div className="shell relative pt-16">
+        <Atmosphere />
+        <div className="h-16 w-[28rem] max-w-full animate-pulse rounded-md bg-surface-2" />
+      </div>
+    )
+  }
+
+  if (!isImported || franchises.length === 0) {
+    return <EmptyLibrary onImport={openImport} />
+  }
+
+  const active = continueWatching(franchises)
+  const lead = active[0] ?? null
+  const rest = active.slice(1, 5)
+  const totals = libraryTotals(franchises)
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar onImportClick={() => setIsImportOpen(true)} />
-
-      <main>
-        <section className="relative min-h-[calc(100vh-56px)] flex items-center justify-center overflow-hidden px-4">
-          {/* Subtle background glow */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-brand/6 blur-[100px]" />
-          </div>
-
-          <div className="relative z-10 max-w-3xl mx-auto text-center">
-            {/* Eyebrow label */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/25 bg-brand/8 text-brand text-xs font-medium mb-6"
+    <div className="pb-24">
+      {lead ? (
+        <StoryHero franchise={lead} />
+      ) : (
+        <section className="relative">
+          <Atmosphere />
+          <div className="shell relative py-24">
+            <p className="eyebrow">Your collection</p>
+            <h1 className="mt-4 text-display font-bold text-ink">
+              {totals.stories} {totals.stories === 1 ? 'story' : 'stories'}, all watched.
+            </h1>
+            <p className="mt-5 max-w-[58ch] text-body text-ink-2">
+              Nothing in progress. Everything in this library has been seen through to the end —
+              the shelf is ready for something new.
+            </p>
+            <Link
+              href="/discover"
+              className="mt-8 inline-flex h-11 items-center rounded-full bg-brand px-5 text-body font-semibold text-white transition-colors hover:bg-brand-strong"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-              Powered by AniList
-            </motion.div>
-
-            {/* Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.05 }}
-              className="text-5xl md:text-7xl font-bold tracking-tight mb-5"
-            >
-              <span className="bg-gradient-to-br from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
-                Count stories,
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-brand via-brand-light to-brand bg-clip-text text-transparent">
-                not seasons.
-              </span>
-            </motion.h1>
-
-            {/* Sub-headline */}
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.12 }}
-              className="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed"
-            >
-              StoryDex groups your anime list into franchises so you see the whole story —
-              not hundreds of individual seasons.
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="flex flex-col sm:flex-row gap-3 justify-center mb-20"
-            >
-              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button
-                  size="lg"
-                  onClick={() => setIsImportOpen(true)}
-                  className="bg-brand hover:bg-brand-dark text-white h-11 px-7 text-sm font-medium shadow-xl shadow-brand/20 flex items-center gap-2"
-                >
-                  Import from AniList
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </motion.div>
-
-              <Link href="/dashboard">
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-11 px-7 text-sm font-medium border-border/60 hover:bg-muted/60 hover:border-brand/30"
-                  >
-                    Browse Demo
-                  </Button>
-                </motion.div>
-              </Link>
-            </motion.div>
-
-            {/* Feature cards */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.32 }}
-              className="grid sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
-            >
-              {features.map((feature, i) => (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + i * 0.08 }}
-                  className="p-5 rounded-xl bg-card border border-border/50 hover:border-brand/25 transition-all duration-200 text-left"
-                >
-                  <feature.icon className="w-5 h-5 text-brand mb-3" aria-hidden="true" />
-                  <h3 className="text-sm font-semibold text-foreground mb-1">{feature.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
+              Find the next story
+            </Link>
           </div>
         </section>
-      </main>
+      )}
 
-      <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <div className="shell">
+        {rest.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h2 className="text-head font-bold text-ink">Also in progress</h2>
+                <p className="text-small text-ink-3">{rest.length} more stories</p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="group/all inline-flex items-center gap-1.5 text-small font-medium text-ink-2 transition-colors hover:text-ink"
+              >
+                Everything on Home
+                <span aria-hidden className="transition-transform duration-200 group-hover/all:translate-x-0.5">
+                  →
+                </span>
+              </Link>
+            </div>
+
+            <StoryLadder stories={rest} />
+          </section>
+        )}
+
+        <section className="mt-20 grid gap-4 sm:grid-cols-3">
+          {[
+            { href: '/library', label: 'Library', detail: 'Search, filter, three densities' },
+            { href: '/franchises', label: 'Collections', detail: 'Every story as one object' },
+            { href: '/discover', label: 'Discover', detail: 'Live AniList, marked against yours' },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group/all rounded-md border border-line bg-surface p-5 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15 hover:bg-surface-2"
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="text-lead font-semibold text-ink">{item.label}</span>
+                <span
+                  aria-hidden
+                  className="text-ink-3 transition-transform duration-200 group-hover/all:translate-x-0.5"
+                >
+                  →
+                </span>
+              </span>
+              <span className="mt-1.5 block text-small text-ink-3">{item.detail}</span>
+            </Link>
+          ))}
+        </section>
+      </div>
     </div>
   )
 }
