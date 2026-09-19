@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Bell, User } from 'lucide-react'
+import { ArrowUpRight, Compass, LibraryBig } from 'lucide-react'
 
 interface NavbarProps {
   onImportClick?: () => void
@@ -12,60 +12,46 @@ interface NavbarProps {
 export function Navbar({ onImportClick }: NavbarProps) {
   return (
     <motion.nav
-      className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl shadow-2xl shadow-brand/20 transition-all duration-300"
+      className="site-nav"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
     >
-      <div className="max-w-container-max mx-auto px-gutter-mobile md:px-gutter-desktop h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-4 group" aria-label="StoryDex home">
-          <span className="font-display-hero-mobile text-headline-lg tracking-tighter text-primary-fixed-dim">
-            StoryDex
+      <div className="site-nav__inner">
+        <Link href="/" className="brand-mark" aria-label="StoryDex home">
+          <span className="brand-mark__glyph" aria-hidden="true">S</span>
+          <span>
+            <strong>StoryDex</strong>
+            <small>story cartography</small>
           </span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <div className="site-nav__links">
           <Link
             href="/dashboard"
-            className="text-on-surface-variant hover:text-primary font-label-caps text-label-caps transition-all duration-300 hover:scale-105"
+            className="site-nav__link"
           >
-            LIBRARY
+            <LibraryBig aria-hidden="true" />
+            Library
           </Link>
           <Link
-            href="#"
-            className="text-on-surface-variant hover:text-primary font-label-caps text-label-caps transition-all duration-300 hover:scale-105"
+            href="/dashboard#stories"
+            className="site-nav__link"
           >
-            DISCOVER
+            <Compass aria-hidden="true" />
+            Explore
           </Link>
-          <Link
-            href="#"
-            className="text-on-surface-variant hover:text-primary font-label-caps text-label-caps transition-all duration-300 hover:scale-105"
-          >
-            STATS
-          </Link>
-        </nav>
+        </div>
 
-        <div className="flex items-center gap-4">
-          <button 
-            className="text-on-surface-variant hover:text-primary transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
-          <button 
-            className="text-on-surface-variant hover:text-primary transition-colors"
-            aria-label="Account"
-          >
-            <User className="w-5 h-5" />
-          </button>
+        <div className="site-nav__actions">
+          <span className="site-nav__signal"><i /> local library</span>
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}>
             <Button
               onClick={onImportClick}
               size="sm"
-              className="bg-primary-container hover:bg-primary text-white text-sm h-9 px-4 shadow-[0_0_15px_rgba(124,58,237,0.25)] transition-all duration-200 font-label-caps text-[11px] uppercase tracking-wider"
+              className="nav-import"
             >
-              Import
+              Import list <ArrowUpRight aria-hidden="true" />
             </Button>
           </motion.div>
         </div>
