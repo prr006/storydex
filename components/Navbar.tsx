@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 
@@ -9,10 +10,12 @@ interface NavbarProps {
 }
 
 /**
- * Atlas nav — a slim, transparent almanac header.
- * It floats over the story world and only gains an ink wash once you scroll.
+ * Atlas nav — a slim bar embedded in the world.
+ * Transparent over the story, ink-wash once you scroll; no glass, no boxes.
+ * Active links are underlined in ember.
  */
 export function Navbar({ onImportClick }: NavbarProps) {
+  const pathname = usePathname()
   const [solid, setSolid] = useState(false)
 
   useEffect(() => {
@@ -22,8 +25,10 @@ export function Navbar({ onImportClick }: NavbarProps) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const onDashboard = pathname === '/dashboard'
+
   return (
-    <nav className={`atlas-nav${solid ? ' atlas-nav--solid' : ''}`}>
+    <nav className={`atlas-nav${solid ? ' atlas-nav--solid' : ''}`} aria-label="Primary">
       <div className="atlas-nav__inner">
         <Link href="/" className="brand" aria-label="StoryDex home">
           <span className="brand__mark">
@@ -33,7 +38,11 @@ export function Navbar({ onImportClick }: NavbarProps) {
         </Link>
 
         <div className="atlas-nav__links">
-          <Link href="/dashboard" className="atlas-nav__link">
+          <Link
+            href="/dashboard"
+            className={onDashboard ? 'atlas-nav__link is-active' : 'atlas-nav__link'}
+            aria-current={onDashboard ? 'page' : undefined}
+          >
             Library
           </Link>
           <Link href="/dashboard#stories" className="atlas-nav__link">

@@ -20,6 +20,7 @@ import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
 import { StoryPlate } from '@/components/StoryPlate'
 import { WordReveal } from '@/components/Reveal'
+import { Beacon } from '@/components/Beacon'
 import { storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
@@ -30,6 +31,8 @@ import {
 } from '@/lib/useDashboardControls'
 import type { Franchise } from '@/lib/franchise'
 
+const MotionLink = motion.create(Link)
+
 /* -------------------------------------------------------------------------- */
 /* per-story journey geometry, shared by the cover route and the index glyphs */
 /* -------------------------------------------------------------------------- */
@@ -39,7 +42,7 @@ function stateWord(franchise: Franchise) {
     return { label: 'complete', tone: 'done' as const }
   }
   const next = franchise.nextToWatch
-  if (next) return { label: `now · ${next.name}`, tone: 'live' as const }
+  if (next) return { label: `now — ${next.name}`, tone: 'live' as const }
   if (franchise.seasons.some((s) => s.status === 'PLANNING')) {
     return { label: 'planned', tone: 'quiet' as const }
   }
@@ -57,8 +60,8 @@ export default function Dashboard() {
     target: coverRef,
     offset: ['start start', 'end start'],
   })
-  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '12%'])
-  const hazeY = useTransform(scrollYProgress, [0, 1], ['0%', '-6%'])
+  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '14%'])
+  const hazeY = useTransform(scrollYProgress, [0, 1], ['0%', '-7%'])
 
   const activeStory = useMemo(
     () =>
@@ -118,11 +121,12 @@ export default function Dashboard() {
                   alt=""
                   fill
                   priority
-                  sizes="(max-width: 900px) 100vw, 100vw"
+                  sizes="100vw"
                   className="object-cover"
                 />
               </motion.div>
-              <motion.div className="cover__atmos" style={{ y: hazeY }} aria-hidden="true" />
+              <motion.div className="cover__light" style={{ y: hazeY }} aria-hidden="true" />
+              <div className="cover__atmos" aria-hidden="true" />
               <span className="cover__watermark" aria-hidden="true">
                 {activeStory.name}
               </span>
@@ -130,21 +134,21 @@ export default function Dashboard() {
               <div className="cover__inner">
                 <div className="cover__body">
                   <div className="cover__toplink">
-                    <span className="eyebrow">
-                      <i className="eyebrow__dot eyebrow__dot--live" aria-hidden="true" /> Current story
+                    <span className="label">
+                      <i className="label__dot label__dot--live" aria-hidden="true" /> Current story
+                    </span>
+                    <span className="coords coords--dim">
+                      {String(activeStoryNumber).padStart(2, '0')} / {String(filtered.length).padStart(2, '0')}
                     </span>
                   </div>
 
                   <p className="cover__kicker">
-                    <span>
-                      STORY {String(activeStoryNumber).padStart(2, '0')} / {String(filtered.length).padStart(2, '0')}
-                    </span>
                     <b>{activeStory.genres.slice(0, 2).join(' · ') || 'unclassified'}</b>
-                    <span>{activeStory.completedSeasons}/{activeStory.totalSeasons} recorded</span>
+                    <span>{activeStory.completedSeasons} of {activeStory.totalSeasons} recorded</span>
                   </p>
 
                   <h1 id="current-story-title" className="cover__title">
-                    <WordReveal text={activeStory.name} as="span" delay={0.15} emphasizeLast />
+                    <WordReveal text={activeStory.name} as="span" delay={0.45} emphasizeLast />
                   </h1>
 
                   <p className="cover__desc">{activeStory.description}</p>
@@ -171,21 +175,20 @@ export default function Dashboard() {
                     src={activeStory.posterUrl}
                     alt={activeStory.name}
                     plate="01"
-                    caption={`origin · ${originYear || '—'}`}
+                    caption={`origin — ${originYear || '—'}`}
                     size="md"
+                    state="current"
                     tilt
                     eager
                   />
                 </div>
 
-                {/* Your position on the story — the signature route */}
+                {/* Your position on the story — the route crosses the world */}
                 <div className="cover__route">
                   <div className="route">
                     <div className="route__ends">
-                      <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
-                      <span>
-                        {activeStory.seasons.length} entries
-                      </span>
+                      <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
+                      <span>{activeStory.seasons.length} entries</span>
                       <span>Horizon</span>
                     </div>
                     <div
@@ -215,29 +218,32 @@ export default function Dashboard() {
                         )
                       })}
                       {!activePos.complete && (
-                        <span
-                          className="beacon"
+                        <Beacon
                           style={{ left: `${activePos.fill * 100}%` }}
-                          aria-hidden="true"
-                        >
-                          <i />
-                          <span className={`beacon__flag${activePos.fill > 0.82 ? ' beacon__flag--end' : ''}`}>
-                            <MapPin aria-hidden="true" />
-                            You
-                            {next ? (
-                              <em>
-                                {' '}· {next.name}
-                                {epNow ? ` · EP ${epNow}/${next.episodes || '?'}` : ''}
-                              </em>
-                            ) : null}
-                          </span>
-                        </span>
+                          flag={
+                            <span className={`beacon__flag${activePos.fill > 0.82 ? ' beacon__flag--end' : ''}`}>
+                              <MapPin aria-hidden="true" />
+                              <b>You</b>
+                              {next ? (
+                                <em>
+                                  {next.name}
+                                  {epNow ? ` · EP ${epNow}/${next.episodes || '?'}` : ''}
+                                </em>
+                              ) : null}
+                            </span>
+                          }
+                        />
                       )}
                       {activePos.complete && (
-                        <span className="beacon" style={{ left: '100%' }} aria-hidden="true">
-                          <i />
-                          <span className="beacon__flag"><Check aria-hidden="true" /> Complete</span>
-                        </span>
+                        <Beacon
+                          style={{ left: '100%' }}
+                          flag={
+                            <span className="beacon__flag beacon__flag--end">
+                              <Check aria-hidden="true" />
+                              <b>Complete</b>
+                            </span>
+                          }
+                        />
                       )}
                     </div>
                   </div>
@@ -249,15 +255,15 @@ export default function Dashboard() {
             <section className="index" id="stories" aria-labelledby="index-title">
               <div className="index__head">
                 <div>
-                  <p className="eyebrow">
-                    <i className="eyebrow__dot" aria-hidden="true" /> The index
+                  <p className="label">
+                    <i className="label__dot" aria-hidden="true" /> The index
                   </p>
                   <h2 id="index-title" className="h-section">
                     Every story in <em>your atlas.</em>
                   </h2>
                 </div>
                 <span className="index__count">
-                  {filtered.length} routes · {stats.completedEntries}/{stats.totalEntries} entries · {stats.completion}%
+                  {filtered.length} routes · {stats.completedEntries} of {stats.totalEntries} entries · {stats.completion}% complete
                 </span>
               </div>
 
@@ -305,11 +311,19 @@ export default function Dashboard() {
                     const state = stateWord(franchise)
                     const firstYear = franchise.seasons[0]?.year || ''
                     return (
-                      <Link
+                      <MotionLink
                         key={franchise.id}
                         href={`/franchise/${franchise.id}`}
                         className="idx"
                         style={storyAccentVars(franchise.id)}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: '-30px' }}
+                        transition={{
+                          duration: 0.6,
+                          delay: Math.min(index * 0.04, 0.28),
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
                       >
                         <div
                           className="idx__ghost"
@@ -351,7 +365,7 @@ export default function Dashboard() {
                         </span>
                         <span className="idx__year">{firstYear || '—'}</span>
                         <ArrowUpRight className="idx__arrow" aria-hidden="true" />
-                      </Link>
+                      </MotionLink>
                     )
                   })}
                 </div>
@@ -378,10 +392,10 @@ export default function Dashboard() {
               <div className="tp__ring tp__ring--3" />
               <div className="tp__cross-h" />
               <div className="tp__cross-v" />
-              <span className="tp__beacon"><span className="beacon"><i /></span></span>
+              <span className="tp__beacon"><Beacon /></span>
             </div>
-            <span className="eyebrow">
-              <i className="eyebrow__dot eyebrow__dot--live" aria-hidden="true" /> No route selected
+            <span className="label">
+              <i className="label__dot label__dot--live" aria-hidden="true" /> No route selected
             </span>
             <h1>
               Your stories are waiting<br />to become a <em>map.</em>

@@ -4,8 +4,8 @@ import type { CSSProperties } from 'react'
  * Story-derived accent colors.
  *
  * Every story owns a stable hue derived from its id, so a given story wears
- * the same accent across the dashboard, its detail page and its route. The
- * hue feeds a small set of CSS custom properties consumed by the UI:
+ * the same light across the dashboard, its detail page and its route. The
+ * hue feeds a set of CSS custom properties consumed by the UI:
  *
  *   --story-h            raw hue (unitless number)
  *   --story-accent       primary accent
@@ -16,6 +16,7 @@ import type { CSSProperties } from 'react'
  *   --story-accent-ink   deep tint for text on accent
  *   --story-sky          wide atmospheric wash for full-page environments
  *   --story-haze         fainter wash for secondary layers
+ *   --story-light        the brightest emission — light leaks & halos
  */
 export function storyHue(seed: string): number {
   let hash = 5381
@@ -37,5 +38,6 @@ export function storyAccentVars(seed: string): CSSProperties {
     '--story-accent-ink': `hsl(${h} 62% 10%)`,
     '--story-sky': `hsl(${h} 55% 52% / 0.22)`,
     '--story-haze': `hsl(${h} 50% 50% / 0.09)`,
+    '--story-light': `hsl(${h} 85% 70% / 0.45)`,
   } as CSSProperties
 }

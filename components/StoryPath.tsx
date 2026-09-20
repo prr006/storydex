@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useMotionValueEvent, useScroll, useTransform } from 'framer-motion'
 import { ArrowUpRight, Check, Circle, MapPin, Play, Star } from 'lucide-react'
 import { StoryPlate } from '@/components/StoryPlate'
 import { storyAccentVars } from '@/lib/storyAccent'
@@ -49,8 +49,8 @@ function formatLabel(format?: string) {
 }
 
 // ---------------------------------------------------------------------------
-// StoryPath — chapters along a spine. The ink fills the spine as you scroll,
-// so reading the page literally walks the route.
+// StoryPath — chapters along a spine.
+// The ink fills the spine as you scroll; a sticky HUD reports route progress.
 // ---------------------------------------------------------------------------
 
 export function StoryPath({ franchise }: { franchise: Franchise }) {
@@ -65,16 +65,23 @@ export function StoryPath({ franchise }: { franchise: Franchise }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: mapRef,
-    offset: ['start 72%', 'end 85%'],
+    offset: ['start 75%', 'end 88%'],
   })
   const inkHeight = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+
+  // live route-progress readout for the sticky HUD
+  const [hudPct, setHudPct] = useState(0)
+  useMotionValueEvent(scrollYProgress, 'change', (v) => {
+    const pct = Math.round(Math.min(1, Math.max(0, v)) * 100)
+    setHudPct((prev) => (prev === pct ? prev : pct))
+  })
 
   return (
     <section className="chapters" style={storyAccentVars(franchise.id)} aria-labelledby="journey-title">
       <header className="chapters__head">
         <div>
-          <p className="eyebrow">
-            <i className="eyebrow__dot" aria-hidden="true" /> The journey
+          <p className="label">
+            <i className="label__dot" aria-hidden="true" /> The journey
           </p>
           <h2 id="journey-title" className="h-section">
             One route, <em>traveled</em> in {total} chapter{total === 1 ? '' : 's'}.
@@ -87,121 +94,130 @@ export function StoryPath({ franchise }: { franchise: Franchise }) {
         </div>
       </header>
 
-      <div className="chapters__map" ref={mapRef}>
-        <div className="spine" aria-hidden="true">
-          <div className="spine__line" />
-          <motion.div className="spine__ink" style={{ height: inkHeight }} />
-        </div>
+      <div className="chapters__stage">
+        <div className="chapters__map" ref={mapRef}>
+          <div className="spine" aria-hidden="true">
+            <div className="spine__line" />
+            <motion.div className="spine__ink" style={{ height: inkHeight }} />
+          </div>
 
-        {seasons.map((season, index) => {
-          const state = states[index]
-          const isCurrent = state === 'current'
-          const isPast = state === 'past'
-          const isFuture = state === 'future'
-          const isNext = isCurrent && season.id === franchise.nextToWatch?.id
-          const progressPct = season.episodes > 0
-            ? Math.min(100, ((season.progress ?? 0) / season.episodes) * 100)
-            : 0
-          const epPosition = season.episodes > 0
-            ? Math.min((season.progress ?? 0) + 1, season.episodes)
-            : null
-          const score = (season.score ?? 0) > 0 ? (season.score ?? 0) / 10 : null
+          {seasons.map((season, index) => {
+            const state = states[index]
+            const isCurrent = state === 'current'
+            const isPast = state === 'past'
+            const isFuture = state === 'future'
+            const isNext = isCurrent && season.id === franchise.nextToWatch?.id
+            const progressPct = season.episodes > 0
+              ? Math.min(100, ((season.progress ?? 0) / season.episodes) * 100)
+              : 0
+            const epPosition = season.episodes > 0
+              ? Math.min((season.progress ?? 0) + 1, season.episodes)
+              : null
+            const score = (season.score ?? 0) > 0 ? (season.score ?? 0) / 10 : null
 
-          return (
-            <motion.article
-              key={season.id}
-              className={`chapter chapter--${state}${index % 2 === 1 ? ' chapter--flip' : ''}`}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-70px' }}
-              transition={{ duration: 0.75, ease: EASE }}
-            >
-              <div className="chapter__node" aria-hidden="true">
-                <span className={`node node--${state === 'current' ? 'current' : state}`}>
-                  <i />
-                </span>
-                {isCurrent && <span className="node__flag">You are here</span>}
-              </div>
-
-              <div className="chapter__copy">
-                <div className="chapter__top">
-                  <span className="chapter__folio">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="chapter__kicker">
-                    Chapter {index + 1} · {season.year || 'undated'}
+            return (
+              <motion.article
+                key={season.id}
+                className={`chapter chapter--${state}${index % 2 === 1 ? ' chapter--flip' : ''}`}
+                initial={{ opacity: 0, y: 34 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.8, ease: EASE }}
+              >
+                <div className="chapter__node" aria-hidden="true">
+                  <span className={`node node--${state}`}>
+                    <i />
                   </span>
+                  {season.year > 0 && (
+                    <span className="node__year">{season.year}</span>
+                  )}
+                  {isCurrent && <span className="node__flag">You are here</span>}
                 </div>
-                <h3 className="chapter__title">{season.name}</h3>
-                <p className="chapter__meta">
-                  {formatLabel(season.format)} · {season.episodes || '?'} episodes
-                  {isPast ? ' · recorded' : ''}
-                </p>
 
-                {isCurrent && season.episodes > 0 && (
-                  <div className="chapter__progress">
-                    <div className="chapter__progress-line">
-                      <span style={{ width: `${progressPct}%` }} />
-                    </div>
-                    <div className="chapter__progress-meta">
-                      <span>{season.progress ? `resume at EP ${epPosition}` : 'begin at EP 1'}</span>
-                      <span>{season.episodes} total</span>
-                    </div>
-                  </div>
-                )}
-
-                {isCurrent && isNext && season.siteUrl && epPosition && (
-                  <div className="chapter__cta">
-                    <a
-                      href={season.siteUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="cta cta--accent"
-                    >
-                      Resume EP {epPosition} <Play aria-hidden="true" />
-                    </a>
-                  </div>
-                )}
-
-                <div className="chapter__stamps">
-                  {isPast && (
-                    <span className="chapter__stamp">
-                      <Check aria-hidden="true" /> recorded {season.year || ''}
+                <div className="chapter__copy">
+                  <div className="chapter__top">
+                    <span className="chapter__folio">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="chapter__kicker">
+                      Chapter {index + 1}{season.year > 0 ? ` — ${season.year}` : ''}
                     </span>
+                  </div>
+                  <h3 className="chapter__title">{season.name}</h3>
+                  <p className="chapter__meta">
+                    {formatLabel(season.format)} · {season.episodes || '?'} episodes
+                    {isPast ? ' · recorded' : ''}
+                  </p>
+
+                  {isCurrent && season.episodes > 0 && (
+                    <div className="chapter__progress">
+                      <div className="chapter__progress-line">
+                        <span style={{ width: `${progressPct}%` }} />
+                      </div>
+                      <div className="chapter__progress-meta">
+                        <span>{season.progress ? `resume at EP ${epPosition}` : 'begin at EP 1'}</span>
+                        <span>{season.episodes} total</span>
+                      </div>
+                    </div>
                   )}
-                  {isPast && score !== null && (
-                    <span className="chapter__stamp chapter__stamp--score">
-                      <Star aria-hidden="true" /> {score.toFixed(1)}
-                    </span>
+
+                  {isCurrent && isNext && season.siteUrl && epPosition && (
+                    <div className="chapter__cta">
+                      <a
+                        href={season.siteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cta cta--accent"
+                      >
+                        Resume EP {epPosition} <Play aria-hidden="true" />
+                      </a>
+                    </div>
                   )}
-                  {isFuture && (
-                    <span className="chapter__stamp chapter__stamp--future">not yet reached</span>
-                  )}
+
+                  <div className="chapter__stamps">
+                    {isPast && (
+                      <span className="chapter__stamp">
+                        <Check aria-hidden="true" /> recorded{season.year > 0 ? ` ${season.year}` : ''}
+                      </span>
+                    )}
+                    {isPast && score !== null && (
+                      <span className="chapter__stamp chapter__stamp--score">
+                        <Star aria-hidden="true" /> {score.toFixed(1)}
+                      </span>
+                    )}
+                    {isFuture && (
+                      <span className="chapter__stamp chapter__stamp--future">on the horizon</span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="chapter__plate">
-                {isFuture ? (
-                  <div className="plate plate--ghost" aria-hidden="true">
-                    <span>unreached</span>
-                  </div>
-                ) : (
+                <div className="chapter__plate">
                   <StoryPlate
                     src={season.posterUrl || franchise.posterUrl}
                     alt={season.name}
                     plate={String(index + 1).padStart(2, '0')}
                     caption={`${season.year || '—'} · ${formatLabel(season.format)}`}
-                    size={isCurrent ? 'lg' : 'sm'}
-                    tilt
+                    size={isCurrent ? 'lg' : isFuture ? 'sm' : 'sm'}
+                    state={state}
+                    tilt={isPast}
                   />
-                )}
-              </div>
-            </motion.article>
-          )
-        })}
+                </div>
+              </motion.article>
+            )
+          })}
 
-        <div className="chapters__end">
-          <span className="node node--end" aria-hidden="true"><i /></span>
-          <span className="chapters__end-label">Horizon</span>
+          <div className="chapters__end">
+            <span className="node node--end" aria-hidden="true"><i /></span>
+            <span className="chapters__end-label">Horizon</span>
+          </div>
         </div>
+
+        {/* sticky route-progress HUD — how far you have walked */}
+        <aside className="route-hud" aria-hidden="true">
+          <span className="route-hud__pct">{hudPct}%</span>
+          <div className="route-hud__line">
+            <motion.div className="route-hud__fill" style={{ scaleY: scrollYProgress }} />
+          </div>
+          <span className="route-hud__label">route traveled</span>
+        </aside>
       </div>
 
       <footer className="chapters__foot">

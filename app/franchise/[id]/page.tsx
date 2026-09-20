@@ -20,6 +20,7 @@ import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
 import { StoryPlate } from '@/components/StoryPlate'
 import { WordReveal } from '@/components/Reveal'
+import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
@@ -53,7 +54,7 @@ export default function FranchiseDetail({ params }: PageProps) {
     target: coverRef,
     offset: ['start start', 'end start'],
   })
-  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '12%'])
+  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '14%'])
 
   const data = useMemo(() => {
     if (!franchise) return null
@@ -110,9 +111,9 @@ export default function FranchiseDetail({ params }: PageProps) {
             <div className="tp__ring tp__ring--3" />
             <div className="tp__cross-h" />
             <div className="tp__cross-v" />
-            <span className="tp__beacon"><span className="beacon"><i /></span></span>
+            <span className="tp__beacon"><Beacon /></span>
           </div>
-          <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> Unmapped territory</p>
+          <p className="label"><i className="label__dot" aria-hidden="true" /> Unmapped territory</p>
           <h1>
             That story is not<br />in your <em>library.</em>
           </h1>
@@ -133,7 +134,7 @@ export default function FranchiseDetail({ params }: PageProps) {
   const next = data.next
 
   return (
-    <div className="app-shell franchise-page" style={storyAccentVars(franchise.id)}>
+    <div className="app-shell" style={storyAccentVars(franchise.id)}>
       <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <main>
@@ -154,6 +155,7 @@ export default function FranchiseDetail({ params }: PageProps) {
               className="object-cover"
             />
           </motion.div>
+          <div className="cover__light" aria-hidden="true" />
           <div className="cover__atmos" aria-hidden="true" />
           <span className="cover__watermark" aria-hidden="true">{franchise.name}</span>
 
@@ -171,11 +173,11 @@ export default function FranchiseDetail({ params }: PageProps) {
               <p className="cover__kicker">
                 <b>{franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}</b>
                 <span>a story in {franchise.seasons.length} movements</span>
-                <span>{data.years}</span>
+                <span className="coords coords--dim" style={{ letterSpacing: '0.1em' }}>{data.years}</span>
               </p>
 
               <h1 id="franchise-title" className="cover__title">
-                <WordReveal text={franchise.name} as="span" delay={0.15} emphasizeLast />
+                <WordReveal text={franchise.name} as="span" delay={0.45} emphasizeLast />
               </h1>
 
               <p className="cover__desc">{franchise.description}</p>
@@ -202,8 +204,9 @@ export default function FranchiseDetail({ params }: PageProps) {
                 src={franchise.posterUrl}
                 alt={franchise.name}
                 plate="01"
-                caption={`origin · ${originYear || '—'}`}
+                caption={`origin — ${originYear || '—'}`}
                 size="md"
+                state="current"
                 tilt
                 eager
               />
@@ -212,7 +215,7 @@ export default function FranchiseDetail({ params }: PageProps) {
             <div className="cover__route">
               <div className="route">
                 <div className="route__ends">
-                  <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
+                  <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
                   <span>{franchise.seasons.length} entries</span>
                   <span>Horizon</span>
                 </div>
@@ -243,19 +246,27 @@ export default function FranchiseDetail({ params }: PageProps) {
                     )
                   })}
                   {!data.pos.complete && (
-                    <span className="beacon" style={{ left: `${pct}%` }} aria-hidden="true">
-                      <i />
-                      <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
-                        <MapPin aria-hidden="true" /> You
-                        {next && <em> · {next.name}</em>}
-                      </span>
-                    </span>
+                    <Beacon
+                      style={{ left: `${pct}%` }}
+                      flag={
+                        <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
+                          <MapPin aria-hidden="true" />
+                          <b>You</b>
+                          {next && <em>{next.name}</em>}
+                        </span>
+                      }
+                    />
                   )}
                   {data.pos.complete && (
-                    <span className="beacon" style={{ left: '100%' }} aria-hidden="true">
-                      <i />
-                      <span className="beacon__flag"><Check aria-hidden="true" /> Complete</span>
-                    </span>
+                    <Beacon
+                      style={{ left: '100%' }}
+                      flag={
+                        <span className="beacon__flag beacon__flag--end">
+                          <Check aria-hidden="true" />
+                          <b>Complete</b>
+                        </span>
+                      }
+                    />
                   )}
                 </div>
               </div>
@@ -270,7 +281,7 @@ export default function FranchiseDetail({ params }: PageProps) {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
             aria-label="Next destination"
           >
             <div className="gate__art">
@@ -302,8 +313,8 @@ export default function FranchiseDetail({ params }: PageProps) {
             </div>
 
             <div className="gate__body">
-              <p className="eyebrow eyebrow--accent">
-                <i className="eyebrow__dot" aria-hidden="true" /> Next destination
+              <p className="label label--accent">
+                <i className="label__dot" aria-hidden="true" /> Next destination
               </p>
               <h2 className="gate__title">
                 <WordReveal text={next.name} as="span" inView emphasizeLast />
@@ -332,7 +343,7 @@ export default function FranchiseDetail({ params }: PageProps) {
         {/* ═══ YOU ARE HERE — full-width route readout ════════════════ */}
         <section className="here" aria-label="Your position">
           <div className="here__ends">
-            <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
+            <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
             <span>Horizon</span>
           </div>
           <div className="here__line">
@@ -342,11 +353,9 @@ export default function FranchiseDetail({ params }: PageProps) {
               initial={{ width: '0%' }}
               whileInView={{ width: `${pct}%` }}
               viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+              transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
             />
-            <span className="beacon here__beacon" style={{ left: `${pct}%` }} aria-hidden="true">
-              <i />
-            </span>
+            <Beacon className="here__beacon" style={{ left: `${pct}%` }} />
           </div>
 
           <div className="here__grid">
@@ -397,7 +406,7 @@ export default function FranchiseDetail({ params }: PageProps) {
         <section className="ledger" aria-labelledby="record-title">
           <div className="chapters__head">
             <div>
-              <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> The record</p>
+              <p className="label"><i className="label__dot" aria-hidden="true" /> The record</p>
               <h2 id="record-title" className="h-section">
                 Every place <em>you&apos;ve been.</em>
               </h2>
@@ -414,7 +423,7 @@ export default function FranchiseDetail({ params }: PageProps) {
         <section className="distance" aria-labelledby="distance-title">
           <div className="chapters__head">
             <div>
-              <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> What remains</p>
+              <p className="label"><i className="label__dot" aria-hidden="true" /> What remains</p>
               <h2 id="distance-title" className="h-section">
                 The distance to <em>horizon.</em>
               </h2>
@@ -461,14 +470,14 @@ export default function FranchiseDetail({ params }: PageProps) {
         {/* ═══ ALMANAC — field data ═══════════════════════════════════ */}
         <aside className="almanac">
           <div>
-            <p className="eyebrow eyebrow--accent">
-              <Route aria-hidden="true" style={{ width: 12, height: 12 }} /> Route note
+            <p className="label label--accent">
+              <Route aria-hidden="true" style={{ width: 14, height: 14 }} /> Route note
             </p>
             <p className="almanac__note">
               {franchise.name} is a continuous story, told across{' '}
               <em>{franchise.seasons.length} {franchise.seasons.length === 1 ? 'entry' : 'entries'}</em>{' '}
-              from {data.years}. You have recorded {franchise.completedSeasons} and stand at the
-              {data.currentEntry ? ` threshold of ${data.currentEntry.name}` : ' end of the line'}.
+              from {data.years}. You have recorded {franchise.completedSeasons} and stand at the{' '}
+              {data.currentEntry ? `threshold of ${data.currentEntry.name}` : 'end of the line'}.
             </p>
           </div>
           <dl>
@@ -504,6 +513,20 @@ export default function FranchiseDetail({ params }: PageProps) {
             </div>
           </dl>
         </aside>
+
+        {/* ═══ ROUTE END — the closing marker ═════════════════════════ */}
+        <div className="route-end">
+          <div className="route-end__line">
+            <Beacon style={{ left: '50%' }} />
+          </div>
+          <p className="route-end__text">
+            {data.pos.complete ? (
+              <>The route is complete — <em>every place you have been, recorded.</em></>
+            ) : (
+              <>The route continues. <em>{data.horizon} {data.horizon === 1 ? 'entry' : 'entries'} still ahead</em> of you.</>
+            )}
+          </p>
+        </div>
       </main>
 
       <footer className="colophon">
