@@ -1,26 +1,26 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Check,
   ChevronDown,
-  Circle,
-  Filter,
   MapPin,
   Play,
   Search,
   SlidersHorizontal,
-  Sparkles,
 } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
+import { StoryPlate } from '@/components/StoryPlate'
+import { WordReveal } from '@/components/Reveal'
+import { storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
 import {
@@ -28,12 +28,37 @@ import {
   SORT_OPTIONS,
   useDashboardControls,
 } from '@/lib/useDashboardControls'
+import type { Franchise } from '@/lib/franchise'
+
+/* -------------------------------------------------------------------------- */
+/* per-story journey geometry, shared by the cover route and the index glyphs */
+/* -------------------------------------------------------------------------- */
+
+function stateWord(franchise: Franchise) {
+  if (franchise.completedSeasons === franchise.totalSeasons && franchise.totalSeasons > 0) {
+    return { label: 'complete', tone: 'done' as const }
+  }
+  const next = franchise.nextToWatch
+  if (next) return { label: `now · ${next.name}`, tone: 'live' as const }
+  if (franchise.seasons.some((s) => s.status === 'PLANNING')) {
+    return { label: 'planned', tone: 'quiet' as const }
+  }
+  return { label: 'unstarted', tone: 'quiet' as const }
+}
 
 export default function Dashboard() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const { franchises, isImported, loading, username } = useLibrary()
   const { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered } =
     useDashboardControls(franchises)
+
+  const coverRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: coverRef,
+    offset: ['start start', 'end start'],
+  })
+  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '12%'])
+  const hazeY = useTransform(scrollYProgress, [0, 1], ['0%', '-6%'])
 
   const activeStory = useMemo(
     () =>
@@ -56,217 +81,188 @@ export default function Dashboard() {
     }
   }, [franchises])
 
-  const otherStories = filtered.filter((franchise) => franchise.id !== activeStory?.id)
-
   const next = activeStory?.nextToWatch ?? null
-  const nextIndex = next && activeStory
-    ? activeStory.seasons.findIndex((season) => season.id === next.id)
-    : -1
+  const activePos = activeStory ? storyPosition(activeStory) : null
   const epNow = next && next.episodes > 0 ? Math.min((next.progress ?? 0) + 1, next.episodes) : null
-  const storyPct = activeStory?.totalSeasons
-    ? Math.round((activeStory.completedSeasons / activeStory.totalSeasons) * 100)
-    : 0
+  const activeStoryNumber = activeStory ? Math.max(filtered.indexOf(activeStory) + 1, 1) : 1
+  const originYear = activeStory?.seasons[0]?.year || ''
 
   return (
-    <div className="app-shell dash">
+    <div className="app-shell" style={activeStory ? storyAccentVars(activeStory.id) : undefined}>
       <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <main>
         {!loading && !isImported && (
-          <div className="demo-ribbon">
-            <span><Sparkles aria-hidden="true" /> Sample library active</span>
-            <button onClick={() => setIsImportOpen(true)}>Import your AniList <ArrowRight aria-hidden="true" /></button>
+          <div className="field-note">
+            <span><i aria-hidden="true" /> Sample atlas active</span>
+            <button onClick={() => setIsImportOpen(true)} className="cta cta--dim" type="button">
+              Import your AniList <ArrowRight aria-hidden="true" />
+            </button>
           </div>
         )}
 
         {loading ? (
           <div className="dashboard-skeleton"><div className="skeleton-hero" /></div>
-        ) : activeStory ? (
+        ) : activeStory && activePos ? (
           <>
-            {/* ═══ THE WORLD — immersive split hero ═══════════════════ */}
+            {/* ═══ THE WORLD — the current story, full-bleed ═══════════ */}
             <section
-              className="world"
+              ref={coverRef}
+              className="cover"
               style={storyAccentVars(activeStory.id)}
               aria-labelledby="current-story-title"
             >
-              {/* LEFT: the story environment */}
-              <div className="world__env">
-                <div className="world__env-art">
-                  <Image
-                    src={activeStory.bannerUrl || activeStory.posterUrl}
-                    alt=""
-                    fill
-                    priority
-                    sizes="(max-width: 900px) 100vw, 55vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="world__env-wash" />
-                <div className="world__env-grain" />
+              <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
+                <Image
+                  src={activeStory.bannerUrl || activeStory.posterUrl}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 900px) 100vw, 100vw"
+                  className="object-cover"
+                />
+              </motion.div>
+              <motion.div className="cover__atmos" style={{ y: hazeY }} aria-hidden="true" />
+              <span className="cover__watermark" aria-hidden="true">
+                {activeStory.name}
+              </span>
 
-                {/* Poster floating in the environment */}
-                <div className="world__poster">
-                  <Image
-                    src={activeStory.posterUrl}
-                    alt={activeStory.name}
-                    fill
-                    sizes="240px"
-                    className="object-cover"
-                  />
-                </div>
-
-                {/* Giant title bleeding into the environment */}
-                <span className="world__giant-title" aria-hidden="true">
-                  {activeStory.name}
-                </span>
-              </div>
-
-              {/* RIGHT: the HUD — story coordinates */}
-              <div className="world__hud">
-                <div className="world__hud-inner">
-                  <div className="world__hud-top">
-                    <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> Current story</span>
-                    <span className="world__coord">
-                      {String(Math.max(filtered.indexOf(activeStory) + 1, 1)).padStart(2, '0')} / {filtered.length}
+              <div className="cover__inner">
+                <div className="cover__body">
+                  <div className="cover__toplink">
+                    <span className="eyebrow">
+                      <i className="eyebrow__dot eyebrow__dot--live" aria-hidden="true" /> Current story
                     </span>
                   </div>
 
-                  <h1 id="current-story-title" className="world__title">{activeStory.name}</h1>
+                  <p className="cover__kicker">
+                    <span>
+                      STORY {String(activeStoryNumber).padStart(2, '0')} / {String(filtered.length).padStart(2, '0')}
+                    </span>
+                    <b>{activeStory.genres.slice(0, 2).join(' · ') || 'unclassified'}</b>
+                    <span>{activeStory.completedSeasons}/{activeStory.totalSeasons} recorded</span>
+                  </p>
 
-                  <p className="world__desc">{activeStory.description}</p>
+                  <h1 id="current-story-title" className="cover__title">
+                    <WordReveal text={activeStory.name} as="span" delay={0.15} emphasizeLast />
+                  </h1>
 
-                  {/* Position readout */}
-                  <div className="world__position">
-                    <div className="world__position-row">
-                      <span className="world__position-label"><MapPin aria-hidden="true" /> Your position</span>
-                      {next ? (
-                        <span className="world__position-value">
-                          {next.name}{epNow ? <em> · EP {epNow}/{next.episodes || '?'}</em> : null}
-                        </span>
-                      ) : (
-                        <span className="world__position-value world__position-value--done"><Check aria-hidden="true" /> Complete</span>
-                      )}
-                    </div>
-                    <div className="readout-line"><span style={{ width: `${storyPct}%` }} /></div>
-                    <div className="readout-meta">
-                      <span>{activeStory.completedSeasons} recorded</span>
-                      <span>{storyPct}% explored</span>
-                      <span>{activeStory.totalSeasons - activeStory.completedSeasons} ahead</span>
-                    </div>
-                  </div>
+                  <p className="cover__desc">{activeStory.description}</p>
 
-                  {/* Next destination */}
-                  {next && (
-                    <div className="world__next">
-                      <span className="world__next-label">Next destination</span>
-                      <div className="world__next-art">
-                        <Image
-                          src={next.posterUrl || activeStory.posterUrl}
-                          alt=""
-                          fill
-                          sizes="120px"
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="world__next-copy">
-                        <strong>{next.name}</strong>
-                        <span>{next.format || 'TV'} · {next.year || '—'} · {next.episodes || '?'} ep</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="world__actions">
-                    <Link href={`/franchise/${activeStory.id}`} className="button button--light">
+                  <div className="cover__cta">
+                    <Link href={`/franchise/${activeStory.id}`} className="cta">
                       Enter the story <ArrowRight aria-hidden="true" />
                     </Link>
                     {next?.siteUrl && epNow && (
-                      <a href={next.siteUrl} target="_blank" rel="noreferrer" className="button button--ghost">
-                        Play EP {epNow} <Play aria-hidden="true" />
+                      <a
+                        href={next.siteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cta cta--accent"
+                      >
+                        Resume EP {epNow} <Play aria-hidden="true" />
                       </a>
                     )}
                   </div>
+                </div>
 
-                  {/* Route timeline */}
-                  <div className="world__timeline">
-                    <div className="world__timeline-track">
-                      <div className="world__timeline-fill" style={{ width: `${activeStory.totalSeasons > 1 ? (nextIndex >= 0 ? (nextIndex / (activeStory.seasons.length - 1)) * 100 : storyPct) : 50}%` }} />
+                <div className="cover__plate">
+                  <StoryPlate
+                    src={activeStory.posterUrl}
+                    alt={activeStory.name}
+                    plate="01"
+                    caption={`origin · ${originYear || '—'}`}
+                    size="md"
+                    tilt
+                    eager
+                  />
+                </div>
+
+                {/* Your position on the story — the signature route */}
+                <div className="cover__route">
+                  <div className="route">
+                    <div className="route__ends">
+                      <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
+                      <span>
+                        {activeStory.seasons.length} entries
+                      </span>
+                      <span>Horizon</span>
+                    </div>
+                    <div
+                      className="route__track"
+                      style={{ '--route-fill': `${activePos.fill * 100}%` } as CSSProperties}
+                    >
+                      <div className="route__baseline" />
+                      <div className="route__ink" />
                       {activeStory.seasons.map((season, index) => {
-                        const state = index < nextIndex ? 'past' : index === nextIndex ? 'current' : 'future'
-                        const left = activeStory.seasons.length > 1
-                          ? (index / (activeStory.seasons.length - 1)) * 100
-                          : 50
+                        const state = activePos.complete
+                          ? 'past'
+                          : index < activePos.pos
+                            ? 'past'
+                            : index === activePos.pos && !activePos.complete
+                              ? 'current'
+                              : 'future'
                         return (
                           <Link
                             key={season.id}
                             href={`/franchise/${activeStory.id}`}
-                            className={`world__tick world__tick--${state}`}
-                            style={{ left: `${left}%` }}
+                            className={`route__tick route__tick--${state}`}
+                            style={{ left: `${activePos.total > 1 ? (index / (activePos.total - 1)) * 100 : 0}%` }}
                             aria-label={season.name}
                           >
                             <i />
-                            {state === 'current' && <u>You</u>}
                           </Link>
                         )
                       })}
-                    </div>
-                    <div className="world__timeline-ends">
-                      <span>Origin</span>
-                      <span>{activeStory.seasons.length} entries</span>
-                      <span>Horizon</span>
+                      {!activePos.complete && (
+                        <span
+                          className="beacon"
+                          style={{ left: `${activePos.fill * 100}%` }}
+                          aria-hidden="true"
+                        >
+                          <i />
+                          <span className={`beacon__flag${activePos.fill > 0.82 ? ' beacon__flag--end' : ''}`}>
+                            <MapPin aria-hidden="true" />
+                            You
+                            {next ? (
+                              <em>
+                                {' '}· {next.name}
+                                {epNow ? ` · EP ${epNow}/${next.episodes || '?'}` : ''}
+                              </em>
+                            ) : null}
+                          </span>
+                        </span>
+                      )}
+                      {activePos.complete && (
+                        <span className="beacon" style={{ left: '100%' }} aria-hidden="true">
+                          <i />
+                          <span className="beacon__flag"><Check aria-hidden="true" /> Complete</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* ═══ OTHER STORIES — horizontal shelf ═══════════════════ */}
-            {otherStories.length > 0 && (
-              <section className="shelf" aria-labelledby="shelf-title">
-                <div className="shelf__head">
-                  <div>
-                    <p className="eyebrow"><i className="eyebrow__dot" /> Other stories</p>
-                    <h2 id="shelf-title">Further along the shelf.</h2>
-                  </div>
-                  <span className="section-count">{otherStories.length} routes</span>
-                </div>
-                <div className="shelf__track">
-                  {otherStories.map((franchise, index) => (
-                    <Link
-                      key={franchise.id}
-                      href={`/franchise/${franchise.id}`}
-                      className="shelf__item"
-                      style={{ '--shelf-i': index } as CSSProperties}
-                    >
-                      <div className="shelf__art">
-                        <Image src={franchise.posterUrl} alt={franchise.name} fill sizes="180px" className="object-cover" />
-                      </div>
-                      <div className="shelf__info">
-                        <strong>{franchise.name}</strong>
-                        <span>{franchise.completedSeasons}/{franchise.totalSeasons} · {franchise.genres.slice(0, 2).join(' · ') || '—'}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* ═══ ARCHIVE ═══════════════════════════════════════════ */}
-            <section className="archive-section" aria-labelledby="archive-title">
-              <div className="archive-section__head">
+            {/* ═══ THE INDEX — the whole library as a table of contents ══ */}
+            <section className="index" id="stories" aria-labelledby="index-title">
+              <div className="index__head">
                 <div>
-                  <p className="eyebrow"><i className="eyebrow__dot" /> The record</p>
-                  <h2 id="archive-title">Archive of stories.</h2>
+                  <p className="eyebrow">
+                    <i className="eyebrow__dot" aria-hidden="true" /> The index
+                  </p>
+                  <h2 id="index-title" className="h-section">
+                    Every story in <em>your atlas.</em>
+                  </h2>
                 </div>
-                <div className="archive-section__stats">
-                  <span><strong>{stats.totalEntries}</strong> entries</span>
-                  <span><strong>{stats.completedEntries}</strong> recorded</span>
-                  <span><strong>{stats.completion}%</strong> complete</span>
-                </div>
+                <span className="index__count">
+                  {filtered.length} routes · {stats.completedEntries}/{stats.totalEntries} entries · {stats.completion}%
+                </span>
               </div>
 
-              <div className="archive-controls">
-                <label className="archive-search">
+              <div className="index__controls">
+                <label className="index__search">
                   <Search aria-hidden="true" />
                   <input
                     value={query}
@@ -275,66 +271,139 @@ export default function Dashboard() {
                     aria-label="Search your collection"
                   />
                 </label>
-                <div className="archive-filters">
-                  <Filter aria-hidden="true" />
-                  {FILTER_CHIPS.slice(0, 5).map((chip) => (
+                <div className="index__filters">
+                  {FILTER_CHIPS.map((chip) => (
                     <button
                       key={chip.value}
                       onClick={() => setActiveFilter(chip.value)}
-                      className={activeFilter === chip.value ? 'is-active' : ''}
+                      className={activeFilter === chip.value ? 'index__filter is-active' : 'index__filter'}
+                      type="button"
                     >
                       {chip.label}
                     </button>
                   ))}
-                  <label className="archive-sort">
-                    <SlidersHorizontal aria-hidden="true" />
-                    <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label="Sort library">
-                      {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                    <ChevronDown aria-hidden="true" />
-                  </label>
                 </div>
+                <label className="index__sort">
+                  <SlidersHorizontal aria-hidden="true" />
+                  <select
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value as typeof sort)}
+                    aria-label="Sort library"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown aria-hidden="true" />
+                </label>
               </div>
 
               {filtered.length > 0 ? (
-                <div className="archive-list">
-                  {filtered.map((franchise, index) => (
-                    <Link key={franchise.id} href={`/franchise/${franchise.id}`} className="archive-row">
-                      <span className="archive-row__number">{String(index + 1).padStart(2, '0')}</span>
-                      <span className="archive-row__thumb">
-                        <Image src={franchise.posterUrl} alt="" fill sizes="48px" />
-                      </span>
-                      <span className="archive-row__title">{franchise.name}</span>
-                      <span className="archive-row__genres">{franchise.genres.slice(0, 2).join(' · ') || '—'}</span>
-                      <span className="archive-row__progress"><i style={{ width: `${franchise.totalSeasons ? (franchise.completedSeasons / franchise.totalSeasons) * 100 : 0}%` }} /></span>
-                      <span className="archive-row__count">{franchise.completedSeasons}/{franchise.totalSeasons}</span>
-                      <ArrowRight className="archive-row__arrow" aria-hidden="true" />
-                    </Link>
-                  ))}
+                <div className="index__list">
+                  {filtered.map((franchise, index) => {
+                    const pos = storyPosition(franchise)
+                    const state = stateWord(franchise)
+                    const firstYear = franchise.seasons[0]?.year || ''
+                    return (
+                      <Link
+                        key={franchise.id}
+                        href={`/franchise/${franchise.id}`}
+                        className="idx"
+                        style={storyAccentVars(franchise.id)}
+                      >
+                        <div
+                          className="idx__ghost"
+                          style={{ backgroundImage: `url(${franchise.bannerUrl || franchise.posterUrl})` }}
+                          aria-hidden="true"
+                        />
+                        <span className="idx__folio">{String(index + 1).padStart(2, '0')}</span>
+                        <div className="idx__identity">
+                          <h3 className="idx__name">{franchise.name}</h3>
+                          <span className={`idx__state${state.tone === 'done' ? ' idx__state--done' : state.tone === 'quiet' ? ' idx__state--quiet' : ''}`}>
+                            {state.tone === 'done' && <Check aria-hidden="true" />}
+                            {state.tone === 'live' && <MapPin aria-hidden="true" />}
+                            {state.label}
+                          </span>
+                        </div>
+                        <span className="idx__glyph" aria-hidden="true">
+                          <span className="glyph" style={{ '--glyph-fill': `${pos.fill * 100}%` } as CSSProperties}>
+                            <span className="glyph__line" />
+                            <span className="glyph__ink" />
+                            {franchise.seasons.map((season, i) => (
+                              <span
+                                key={season.id}
+                                className={`glyph__dot ${
+                                  pos.complete
+                                    ? 'glyph__dot--past'
+                                    : i < pos.pos
+                                      ? 'glyph__dot--past'
+                                      : i === pos.pos && !pos.complete
+                                        ? 'glyph__dot--current'
+                                        : 'glyph__dot--future'
+                                }`}
+                                style={{ left: `${pos.total > 1 ? (i / (pos.total - 1)) * 100 : 0}%` }}
+                              />
+                            ))}
+                          </span>
+                        </span>
+                        <span className="idx__count">
+                          {franchise.completedSeasons}/{franchise.totalSeasons}
+                        </span>
+                        <span className="idx__year">{firstYear || '—'}</span>
+                        <ArrowUpRight className="idx__arrow" aria-hidden="true" />
+                      </Link>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="empty-state">
                   <Search aria-hidden="true" />
                   <p>No stories match that view.</p>
-                  <button onClick={() => { setQuery(''); setActiveFilter('all') }}>Reset</button>
+                  <button
+                    onClick={() => { setQuery(''); setActiveFilter('all') }}
+                    className="cta cta--dim"
+                    type="button"
+                  >
+                    Reset the view
+                  </button>
                 </div>
               )}
             </section>
           </>
         ) : (
-          <section className="empty-library">
-            <div className="empty-library__orbit" />
-            <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> No route selected</span>
-            <h1>Your stories are waiting<br />to become a <em>map.</em></h1>
-            <p>Import your public AniList library and StoryDex will find the connections between seasons, films, and the places you have already been.</p>
-            <button className="button button--light" onClick={() => setIsImportOpen(true)}>Import from AniList <ArrowDown aria-hidden="true" /></button>
-            <div className="empty-library__marks"><span><Check /> grouped by story</span><span><Check /> stored locally</span><span><Check /> no account needed</span></div>
+          <section className="void">
+            <div className="void__rose" aria-hidden="true">
+              <div className="tp__ring" />
+              <div className="tp__ring tp__ring--2" />
+              <div className="tp__ring tp__ring--3" />
+              <div className="tp__cross-h" />
+              <div className="tp__cross-v" />
+              <span className="tp__beacon"><span className="beacon"><i /></span></span>
+            </div>
+            <span className="eyebrow">
+              <i className="eyebrow__dot eyebrow__dot--live" aria-hidden="true" /> No route selected
+            </span>
+            <h1>
+              Your stories are waiting<br />to become a <em>map.</em>
+            </h1>
+            <p>
+              Import your public AniList library and StoryDex will find the connections
+              between seasons, films, and the places you have already been.
+            </p>
+            <button className="cta" onClick={() => setIsImportOpen(true)} type="button">
+              Import from AniList <ArrowDown aria-hidden="true" />
+            </button>
+            <div className="void__marks">
+              <span><Check aria-hidden="true" /> grouped by story</span>
+              <span><Check aria-hidden="true" /> stored locally</span>
+              <span><Check aria-hidden="true" /> no account needed</span>
+            </div>
           </section>
         )}
       </main>
 
-      <footer className="site-footer">
-        <span>StoryDex / a map for the stories you carry</span>
+      <footer className="colophon">
+        <span>StoryDex — a map for the stories you carry</span>
         <span>{username ? `mapped from ${username}` : 'powered by AniList'}</span>
       </footer>
 

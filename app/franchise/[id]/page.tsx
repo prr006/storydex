@@ -1,28 +1,26 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowDown,
   ArrowLeft,
-  ArrowRight,
   ArrowUpRight,
-  CalendarDays,
   Check,
-  Clock3,
-  ExternalLink,
   Film,
   MapPin,
   Play,
-  Radio,
   Route,
   Tv,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
-import { StoryPath, StoryWaypoint, getWaypointStates } from '@/components/StoryPath'
+import { StoryPlate } from '@/components/StoryPlate'
+import { WordReveal } from '@/components/Reveal'
+import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
 import type { Season } from '@/lib/franchise'
@@ -35,6 +33,11 @@ function formatIcon(format?: string) {
   return format === 'MOVIE' ? <Film aria-hidden="true" /> : <Tv aria-hidden="true" />
 }
 
+function formatWord(format?: string) {
+  if (format === 'MOVIE') return 'film'
+  return format?.toLowerCase() || 'tv'
+}
+
 function currentSeason(franchise: { seasons: Season[]; nextToWatch?: Season | null }) {
   return franchise.nextToWatch || franchise.seasons.find((season) => season.status === 'CURRENT') || null
 }
@@ -44,6 +47,13 @@ export default function FranchiseDetail({ params }: PageProps) {
   const { id } = use(params)
   const { franchises, loading } = useLibrary()
   const franchise = franchises.find((item) => item.id === id)
+
+  const coverRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: coverRef,
+    offset: ['start start', 'end start'],
+  })
+  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '12%'])
 
   const data = useMemo(() => {
     if (!franchise) return null
@@ -59,6 +69,7 @@ export default function FranchiseDetail({ params }: PageProps) {
     const currentIndex = waypoints.findIndex((w) => w.state === 'current')
     const currentEntry = currentIndex >= 0 ? franchise.seasons[currentIndex] : null
     const remaining = waypoints.filter((w) => w.state === 'future')
+    const pos = storyPosition(franchise)
     return {
       progress: franchise.totalSeasons ? Math.round((franchise.completedSeasons / franchise.totalSeasons) * 100) : 0,
       years: years.length ? `${Math.min(...years)} — ${Math.max(...years)}` : 'undated',
@@ -71,6 +82,9 @@ export default function FranchiseDetail({ params }: PageProps) {
       currentIndex,
       currentEntry,
       remaining,
+      pos,
+      behind: waypoints.filter((w) => w.state === 'past').length,
+      horizon: remaining.length,
       epNow: currentEntry && currentEntry.episodes > 0
         ? Math.min((currentEntry.progress ?? 0) + 1, currentEntry.episodes) : null,
     }
@@ -90,9 +104,21 @@ export default function FranchiseDetail({ params }: PageProps) {
       <div className="app-shell">
         <Navbar onImportClick={() => setIsImportOpen(true)} />
         <section className="not-found">
-          <p className="eyebrow"><i className="eyebrow__dot" /> Unmapped territory</p>
-          <h1>That story is not<br />in your library.</h1>
-          <Link href="/dashboard" className="button button--light"><ArrowLeft aria-hidden="true" /> Back to the map</Link>
+          <div className="not-found__rose" aria-hidden="true">
+            <div className="tp__ring" />
+            <div className="tp__ring tp__ring--2" />
+            <div className="tp__ring tp__ring--3" />
+            <div className="tp__cross-h" />
+            <div className="tp__cross-v" />
+            <span className="tp__beacon"><span className="beacon"><i /></span></span>
+          </div>
+          <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> Unmapped territory</p>
+          <h1>
+            That story is not<br />in your <em>library.</em>
+          </h1>
+          <Link href="/dashboard" className="cta">
+            <ArrowLeft aria-hidden="true" /> Back to the map
+          </Link>
         </section>
         <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
       </div>
@@ -100,176 +126,322 @@ export default function FranchiseDetail({ params }: PageProps) {
   }
 
   const epProgress = data.currentEntry && data.currentEntry.episodes > 0
-    ? Math.min(100, ((data.currentEntry.progress ?? 0) / data.currentEntry.episodes) * 100) : 0
-  const behind = data.waypoints.filter((w) => w.state === 'past').length
-  const horizon = data.remaining.length
+    ? Math.min(100, ((data.currentEntry.progress ?? 0) / data.currentEntry.episodes) * 100)
+    : 0
+  const pct = data.pos.fill * 100
+  const originYear = franchise.seasons[0]?.year || ''
+  const next = data.next
 
   return (
     <div className="app-shell franchise-page" style={storyAccentVars(franchise.id)}>
       <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <main>
-        {/* ═══ STORY WORLD — atmospheric entry ═══════════════════════ */}
-        <section className="franchise-hero">
-          <div className="franchise-hero__backdrop">
-            <Image src={franchise.bannerUrl || franchise.posterUrl} alt="" fill priority sizes="100vw" className="object-cover" />
-          </div>
-          <div className="franchise-hero__wash" />
-          <div className="franchise-hero__grain" />
-          <span className="franchise-hero__landmark" aria-hidden="true">{franchise.name}</span>
+        {/* ═══ THE WORLD — entering a story ═══════════════════════════ */}
+        <section
+          ref={coverRef}
+          className="cover cover--deep"
+          style={storyAccentVars(franchise.id)}
+          aria-labelledby="franchise-title"
+        >
+          <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
+            <Image
+              src={franchise.bannerUrl || franchise.posterUrl}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+          </motion.div>
+          <div className="cover__atmos" aria-hidden="true" />
+          <span className="cover__watermark" aria-hidden="true">{franchise.name}</span>
 
-          <div className="franchise-hero__content">
-            <div className="franchise-hero__nav">
-              <Link href="/dashboard" className="back-link"><ArrowLeft aria-hidden="true" /> all stories</Link>
-              <a href="#journey" className="back-link back-link--down">trace the route <ArrowDown aria-hidden="true" /></a>
+          <div className="cover__inner">
+            <div className="cover__body">
+              <div className="cover__toplink">
+                <Link href="/dashboard" className="back-link">
+                  <ArrowLeft aria-hidden="true" /> All stories
+                </Link>
+                <a href="#route" className="back-link back-link--accent">
+                  Trace the route <ArrowDown aria-hidden="true" />
+                </a>
+              </div>
+
+              <p className="cover__kicker">
+                <b>{franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}</b>
+                <span>a story in {franchise.seasons.length} movements</span>
+                <span>{data.years}</span>
+              </p>
+
+              <h1 id="franchise-title" className="cover__title">
+                <WordReveal text={franchise.name} as="span" delay={0.15} emphasizeLast />
+              </h1>
+
+              <p className="cover__desc">{franchise.description}</p>
+
+              <div className="cover__cta">
+                <a href="#route" className="cta">
+                  Walk the route <ArrowDown aria-hidden="true" />
+                </a>
+                {next?.siteUrl && data.epNow && (
+                  <a
+                    href={next.siteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cta cta--accent"
+                  >
+                    Resume EP {data.epNow} <Play aria-hidden="true" />
+                  </a>
+                )}
+              </div>
             </div>
 
-            <div className="franchise-hero__body">
-              <motion.div
-                className="franchise-hero__poster"
-                initial={{ opacity: 0, y: 30, rotate: -1.5 }}
-                animate={{ opacity: 1, y: 0, rotate: -1.5 }}
-                transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-              >
-                <Image src={franchise.posterUrl} alt={franchise.name} fill sizes="220px" className="object-cover" />
-              </motion.div>
+            <div className="cover__plate">
+              <StoryPlate
+                src={franchise.posterUrl}
+                alt={franchise.name}
+                plate="01"
+                caption={`origin · ${originYear || '—'}`}
+                size="md"
+                tilt
+                eager
+              />
+            </div>
 
-              <motion.div
-                className="franchise-hero__copy"
-                initial={{ opacity: 0, y: 26 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.65, delay: 0.25, ease: 'easeOut' }}
-              >
-                <div className="tag-line">{franchise.genres.slice(0, 4).map((genre) => <span key={genre}>{genre}</span>)}</div>
-                <p className="franchise-hero__kicker">A story in {franchise.seasons.length} movements</p>
-                <h1>{franchise.name}</h1>
-                <p className="franchise-hero__description">{franchise.description}</p>
-                <div className="franchise-hero__metrics">
-                  <span><strong>{data.progress}%</strong> complete</span>
-                  <span><strong>{franchise.completedSeasons}</strong> of {franchise.totalSeasons}</span>
-                  {data.currentEntry && <span className="metric-live"><i /> at {data.currentEntry.name}</span>}
+            <div className="cover__route">
+              <div className="route">
+                <div className="route__ends">
+                  <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
+                  <span>{franchise.seasons.length} entries</span>
+                  <span>Horizon</span>
                 </div>
-              </motion.div>
+                <div
+                  className="route__track"
+                  style={{ '--route-fill': `${pct}%` } as CSSProperties}
+                >
+                  <div className="route__baseline" />
+                  <div className="route__ink" />
+                  {franchise.seasons.map((season, index) => {
+                    const state = data.pos.complete
+                      ? 'past'
+                      : index < data.pos.pos
+                        ? 'past'
+                        : index === data.pos.pos && !data.pos.complete
+                          ? 'current'
+                          : 'future'
+                    return (
+                      <Link
+                        key={season.id}
+                        href="#route"
+                        className={`route__tick route__tick--${state}`}
+                        style={{ left: `${data.pos.total > 1 ? (index / (data.pos.total - 1)) * 100 : 0}%` }}
+                        aria-label={season.name}
+                      >
+                        <i />
+                      </Link>
+                    )
+                  })}
+                  {!data.pos.complete && (
+                    <span className="beacon" style={{ left: `${pct}%` }} aria-hidden="true">
+                      <i />
+                      <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
+                        <MapPin aria-hidden="true" /> You
+                        {next && <em> · {next.name}</em>}
+                      </span>
+                    </span>
+                  )}
+                  {data.pos.complete && (
+                    <span className="beacon" style={{ left: '100%' }} aria-hidden="true">
+                      <i />
+                      <span className="beacon__flag"><Check aria-hidden="true" /> Complete</span>
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ═══ NEXT DESTINATION — departure gate ═════════════════════ */}
-        {data.next && (
+        {/* ═══ THE GATE — next destination, full width ════════════════ */}
+        {next && (
           <motion.section
-            className="departure"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-40px' }}
-            transition={{ duration: 0.55, ease: 'easeOut' }}
+            className="gate"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             aria-label="Next destination"
           >
-            <div className="departure__header">
-              <span className="eyebrow eyebrow--accent"><i className="eyebrow__dot eyebrow__dot--story" /> Next destination</span>
-              <span className="departure__waypoint">waypoint {String(data.nextIndex + 1).padStart(2, '0')} of {franchise.seasons.length}</span>
+            <div className="gate__art">
+              <Image
+                src={next.posterUrl || franchise.posterUrl}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+              <div className="gate__atmos" aria-hidden="true" />
+              <div className="gate__art-wash" aria-hidden="true" />
+              <span className="gate__cap">
+                Waypoint <b>{String(data.nextIndex + 1).padStart(2, '0')}</b> / {String(franchise.seasons.length).padStart(2, '0')}
+                {' — '}{formatWord(next.format)} · {next.year || 'undated'}
+                {next.episodes ? ` · ${next.episodes} ep` : ''}
+              </span>
+              {next.siteUrl && (
+                <a
+                  href={next.siteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="gate__play"
+                  aria-label={`Open ${next.name} on AniList`}
+                >
+                  <Play aria-hidden="true" />
+                </a>
+              )}
             </div>
-            <div className="departure__body">
-              <div className="departure__art">
-                <Image src={data.next.posterUrl || franchise.posterUrl} alt="" fill sizes="280px" className="object-cover" />
-                <div className="departure__art-wash" />
-                {data.next.siteUrl && (
-                  <a href={data.next.siteUrl} target="_blank" rel="noreferrer" className="departure__play" aria-label={`Open ${data.next.name} on AniList`}>
-                    <Play aria-hidden="true" />
-                  </a>
-                )}
+
+            <div className="gate__body">
+              <p className="eyebrow eyebrow--accent">
+                <i className="eyebrow__dot" aria-hidden="true" /> Next destination
+              </p>
+              <h2 className="gate__title">
+                <WordReveal text={next.name} as="span" inView emphasizeLast />
+              </h2>
+              <div className="gate__meta">
+                <span>{formatIcon(next.format)} {next.format || 'TV'}</span>
+                <span>{next.year || 'undated'}</span>
+                <span>{next.episodes || '?'} episodes</span>
               </div>
-              <div className="departure__copy">
-                <h2>{data.next.name}</h2>
-                <div className="departure__meta">
-                  <span>{formatIcon(data.next.format)} {data.next.format || 'TV'}</span>
-                  <span>{data.next.year || 'undated'}</span>
-                  <span>{data.next.episodes || '?'} episodes</span>
-                </div>
-                <div className="departure__actions">
-                  {data.next.siteUrl ? (
-                    <a href={data.next.siteUrl} target="_blank" rel="noreferrer" className="button button--light">
-                      Continue watching <ExternalLink aria-hidden="true" />
-                    </a>
-                  ) : (
-                    <span className="button button--light" aria-disabled="true">Continue watching</span>
-                  )}
-                  <a href="#journey" className="button button--outline">View on the route <ArrowDown aria-hidden="true" /></a>
-                </div>
+              <div className="gate__cta">
+                {next.siteUrl ? (
+                  <a href={next.siteUrl} target="_blank" rel="noreferrer" className="cta">
+                    Continue watching <ArrowUpRight aria-hidden="true" />
+                  </a>
+                ) : (
+                  <span className="cta cta--dim" aria-disabled="true">Continue watching</span>
+                )}
+                <a href="#route" className="cta cta--dim">
+                  View on the route <ArrowDown aria-hidden="true" />
+                </a>
               </div>
             </div>
           </motion.section>
         )}
 
-        {/* ═══ YOUR POSITION — compass readout ═══════════════════════ */}
-        <motion.section
-          className="compass"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.5, delay: 0.05, ease: 'easeOut' }}
-          aria-label="Your position"
-        >
-          <div className="compass__col">
-            <span className="compass__label">Behind you</span>
-            <strong className="compass__value">{behind}</strong>
-            <span className="compass__note">{behind === 1 ? 'entry' : 'entries'} recorded</span>
+        {/* ═══ YOU ARE HERE — full-width route readout ════════════════ */}
+        <section className="here" aria-label="Your position">
+          <div className="here__ends">
+            <span>Origin{originYear ? ` · ${originYear}` : ''}</span>
+            <span>Horizon</span>
           </div>
-          <div className="compass__center">
-            <span className="compass__label"><MapPin aria-hidden="true" /> You are here</span>
-            {data.currentEntry ? (
-              <>
-                <strong className="compass__value compass__value--story">{data.currentEntry.name}</strong>
-                {data.currentEntry.episodes > 0 && (
-                  <div className="compass__progress">
-                    <div className="readout-line"><span style={{ width: `${epProgress}%` }} /></div>
-                    <small>EP {data.epNow || 1} of {data.currentEntry.episodes}</small>
-                  </div>
-                )}
-              </>
-            ) : (
-              <strong className="compass__value compass__value--done"><Check aria-hidden="true" /> Route complete</strong>
-            )}
+          <div className="here__line">
+            <motion.div
+              className="here__ink"
+              style={{ width: `0%` }}
+              initial={{ width: '0%' }}
+              whileInView={{ width: `${pct}%` }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+            />
+            <span className="beacon here__beacon" style={{ left: `${pct}%` }} aria-hidden="true">
+              <i />
+            </span>
           </div>
-          <div className="compass__col compass__col--end">
-            <span className="compass__label">On the horizon</span>
-            <strong className="compass__value">{horizon}</strong>
-            <span className="compass__note">{horizon === 1 ? 'entry' : 'entries'} ahead</span>
-          </div>
-        </motion.section>
 
-        {/* ═══ THE JOURNEY — the main event ══════════════════════════ */}
-        <div id="journey" className="franchise-layout__journey">
+          <div className="here__grid">
+            <div className="here__zone here__zone--left">
+              <span className="here__num">{data.behind}</span>
+              <span className="here__label">Behind you</span>
+              <span className="here__note">{data.behind === 1 ? 'entry recorded' : 'entries recorded'}</span>
+            </div>
+
+            <div className="here__zone here__zone--center">
+              <span className="here__you"><i aria-hidden="true" /> You are here</span>
+              {data.currentEntry ? (
+                <>
+                  <h2 className="here__story">{data.currentEntry.name}</h2>
+                  {data.currentEntry.episodes > 0 && (
+                    <div className="here__ep">
+                      <div className="here__ep-line">
+                        <span style={{ width: `${epProgress}%` }} />
+                      </div>
+                      <div className="here__ep-meta">
+                        <span>EP {data.epNow || 1}</span>
+                        <span>{data.currentEntry.episodes} total</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <h2 className="here__story">
+                  <Check aria-hidden="true" /> Route complete
+                </h2>
+              )}
+            </div>
+
+            <div className="here__zone">
+              <span className="here__num">{data.horizon}</span>
+              <span className="here__label">On the horizon</span>
+              <span className="here__note">{data.horizon === 1 ? 'entry ahead' : 'entries ahead'}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ CHAPTERS — walking the route ═══════════════════════════ */}
+        <div id="route">
           <StoryPath franchise={franchise} />
         </div>
 
-        {/* ═══ THE RECORD — compact strip ════════════════════════════ */}
-        <section className="record-strip" aria-labelledby="record-title">
-          <div className="record-strip__head">
-            <p className="eyebrow"><i className="eyebrow__dot" /> The record</p>
-            <h2 id="record-title">Every place you&apos;ve been.</h2>
+        {/* ═══ THE RECORD — ledger of every place you've been ═════════ */}
+        <section className="ledger" aria-labelledby="record-title">
+          <div className="chapters__head">
+            <div>
+              <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> The record</p>
+              <h2 id="record-title" className="h-section">
+                Every place <em>you&apos;ve been.</em>
+              </h2>
+            </div>
           </div>
-          <div className="record-strip__track">
+          <div>
             {data.waypoints.map(({ season, state }, index) => (
               <StoryWaypoint key={season.id} season={season} state={state} index={index} />
             ))}
           </div>
         </section>
 
-        {/* ═══ WHAT REMAINS — atmospheric ═════════════════════════════ */}
-        <section className="horizon" aria-labelledby="horizon-title">
-          <div className="horizon__head">
-            <p className="eyebrow"><i className="eyebrow__dot" /> What remains</p>
-            <h2 id="horizon-title">The distance to horizon.</h2>
+        {/* ═══ DISTANCE — what remains, fading into the fog ═══════════ */}
+        <section className="distance" aria-labelledby="distance-title">
+          <div className="chapters__head">
+            <div>
+              <p className="eyebrow"><i className="eyebrow__dot" aria-hidden="true" /> What remains</p>
+              <h2 id="distance-title" className="h-section">
+                The distance to <em>horizon.</em>
+              </h2>
+            </div>
           </div>
           {data.remaining.length > 0 ? (
-            <div className="horizon__list">
+            <div className="distance__list">
               {data.remaining.map(({ season }, index) => (
-                <div key={season.id} className="horizon__item" style={{ opacity: 1 - Math.min(index * 0.15, 0.7) }}>
-                  <span className="horizon__mark">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="horizon__name">{season.name}</span>
-                  <span className="horizon__meta">{season.year || '—'} · {season.episodes || '?'} ep</span>
+                <div
+                  key={season.id}
+                  className="distance__row"
+                  style={{ opacity: 1 - Math.min(index * 0.16, 0.65) }}
+                >
+                  <span className="distance__mark">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="distance__name">{season.name}</span>
+                  <span className="distance__fill" aria-hidden="true" />
+                  <span className="distance__meta">
+                    {season.year || '—'} · {season.episodes || '?'} ep
+                  </span>
                   {season.siteUrl && (
-                    <a href={season.siteUrl} target="_blank" rel="noreferrer" className="horizon__link" aria-label={`Open ${season.name}`}>
+                    <a
+                      href={season.siteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="distance__link"
+                      aria-label={`Open ${season.name}`}
+                    >
                       <ArrowUpRight aria-hidden="true" />
                     </a>
                   )}
@@ -277,38 +449,69 @@ export default function FranchiseDetail({ params }: PageProps) {
               ))}
             </div>
           ) : (
-            <div className="horizon__done">
+            <div className="distance__done">
               <Check aria-hidden="true" />
-              <p>Nothing remains. <strong>This route is complete</strong> — every entry recorded.</p>
+              <p>
+                Nothing remains. <strong>This route is complete</strong> — every entry recorded.
+              </p>
             </div>
           )}
         </section>
 
-        {/* ═══ FIELD RAIL ═════════════════════════════════════════════ */}
-        <aside className="franchise-rail">
-          <div className="rail-sticky">
-            <div className="rail-note">
-              <Route aria-hidden="true" />
-              <p>Route note</p>
-              <strong>{franchise.name} is a continuous story told across {franchise.seasons.length} entries.</strong>
-            </div>
-            <div className="rail-data">
-              <p className="eyebrow"><i className="eyebrow__dot" /> Field notes</p>
-              <dl>
-                <div><dt><CalendarDays /> Timeline</dt><dd>{data.years}</dd></div>
-                <div><dt><Clock3 /> Episodes logged</dt><dd>{data.completedEpisodes} / {data.totalEpisodes || '—'}</dd></div>
-                <div><dt><Radio /> Formats</dt><dd>{data.formats.join(' · ')}</dd></div>
-              </dl>
-            </div>
-            <div className="rail-progress">
-              <div className="rail-progress__top"><span>Distance traveled</span><strong>{data.progress}%</strong></div>
-              <div className="readout-line"><span style={{ width: `${data.progress}%` }} /></div>
-              <div className="rail-progress__bottom"><span>{franchise.completedSeasons} recorded</span><span>{franchise.totalSeasons - franchise.completedSeasons} remain</span></div>
-              <div className="rail-progress__stamp"><Check aria-hidden="true" /> updated from your library</div>
-            </div>
+        {/* ═══ ALMANAC — field data ═══════════════════════════════════ */}
+        <aside className="almanac">
+          <div>
+            <p className="eyebrow eyebrow--accent">
+              <Route aria-hidden="true" style={{ width: 12, height: 12 }} /> Route note
+            </p>
+            <p className="almanac__note">
+              {franchise.name} is a continuous story, told across{' '}
+              <em>{franchise.seasons.length} {franchise.seasons.length === 1 ? 'entry' : 'entries'}</em>{' '}
+              from {data.years}. You have recorded {franchise.completedSeasons} and stand at the
+              {data.currentEntry ? ` threshold of ${data.currentEntry.name}` : ' end of the line'}.
+            </p>
           </div>
+          <dl>
+            <div className="almanac__row">
+              <dt>Timeline</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>{data.years}</dd>
+            </div>
+            <div className="almanac__row">
+              <dt>Entries</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>{franchise.totalSeasons}</dd>
+            </div>
+            <div className="almanac__row">
+              <dt>Episodes logged</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>{data.completedEpisodes} / {data.totalEpisodes || '—'}</dd>
+            </div>
+            <div className="almanac__row">
+              <dt>Formats</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>{data.formats.join(' · ')}</dd>
+            </div>
+            <div className="almanac__row">
+              <dt>Distance traveled</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>{data.progress}%</dd>
+            </div>
+            <div className="almanac__row">
+              <dt>Source</dt>
+              <span className="fill" aria-hidden="true" />
+              <dd>your AniList library</dd>
+            </div>
+          </dl>
         </aside>
       </main>
+
+      <footer className="colophon">
+        <span>StoryDex — a map for the stories you carry</span>
+        <span>
+          {franchise.completedSeasons} of {franchise.totalSeasons} recorded
+        </span>
+      </footer>
 
       <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
     </div>

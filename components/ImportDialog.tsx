@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { X, AlertCircle, Loader2 } from 'lucide-react'
+import { X, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
 import { fetchAniListLibrary, AniListError } from '@/lib/anilist'
 import { groupFranchises, expandFranchises } from '@/lib/franchise'
 import { saveLibrary } from '@/lib/storage'
@@ -54,119 +53,105 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
+        <div className="dlg" role="dialog" aria-modal="true" aria-label="Import from AniList">
           <motion.div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="dlg__scrim"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
           />
 
-          {/* Modal */}
           <motion.div
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
+            className="dlg__panel"
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="bg-card border border-border/50 rounded-2xl p-6 md:p-8 shadow-2xl shadow-black/50">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">Import from AniList</h2>
-                  <p className="text-sm text-foreground/60 mt-1">
-                    Enter your AniList username to import your anime list
-                  </p>
-                </div>
-                <motion.button
-                  onClick={handleClose}
-                  className="p-2 -mr-2 hover:bg-border/50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  aria-label="Close dialog"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <X className="w-5 h-5 text-foreground/60" aria-hidden="true" />
-                </motion.button>
-              </div>
+            <button
+              onClick={handleClose}
+              className="dlg__close"
+              aria-label="Close dialog"
+              type="button"
+            >
+              <X aria-hidden="true" />
+            </button>
 
-              {/* Input */}
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-sm font-medium text-foreground/80 mb-2 block">
-                    AniList Username
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="unacknowledged000"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value)
-                      if (error) setError(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && username.trim() && !isLoading) {
-                        handleImport()
-                      }
-                    }}
-                    disabled={isLoading}
-                    aria-invalid={!!error}
-                    className="w-full px-4 py-2 min-h-[44px] bg-background border border-border/50 rounded-lg text-foreground placeholder-foreground/40 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
+            <p className="dlg__kicker">Begin the expedition</p>
+            <h2>Import from AniList</h2>
+            <p className="dlg__sub">
+              Enter your AniList username and StoryDex will chart every season, film, and
+              special in your library.
+            </p>
 
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2"
-                  >
-                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>{error}</span>
-                  </motion.div>
+            <label className="dlg__label" htmlFor="anilist-username">
+              AniList username
+            </label>
+            <input
+              id="anilist-username"
+              className="dlg__input"
+              type="text"
+              placeholder="e.g. unacknowledged000"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value)
+                if (error) setError(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && username.trim() && !isLoading) {
+                  handleImport()
+                }
+              }}
+              disabled={isLoading}
+              aria-invalid={!!error}
+              autoComplete="off"
+            />
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="dlg__error"
+                role="alert"
+              >
+                <AlertCircle aria-hidden="true" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            <div className="dlg__actions">
+              <button
+                onClick={handleClose}
+                disabled={isLoading}
+                className="dlg__cancel"
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!username.trim() || isLoading}
+                className="dlg__submit"
+                type="button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" aria-hidden="true" /> Importing
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight aria-hidden="true" /> Begin import
+                  </>
                 )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex gap-3">
-                <button
-                  onClick={handleClose}
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-2 min-h-[44px] border border-border/50 rounded-lg text-foreground hover:bg-border/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
-                >
-                  Cancel
-                </button>
-                <motion.div
-                  className="flex-1"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    onClick={handleImport}
-                    disabled={!username.trim() || isLoading}
-                    className="w-full min-h-[44px] bg-brand hover:bg-brand-dark text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand/20 font-medium"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
-                        Importing...
-                      </>
-                    ) : (
-                      'Import'
-                    )}
-                  </Button>
-                </motion.div>
-              </div>
-
-              {/* Info Text */}
-              <p className="text-xs text-foreground/50 mt-4 text-center">
-                Pulls your public list directly from AniList. Nothing is stored on a server.
-              </p>
+              </button>
             </div>
+
+            <p className="dlg__foot">
+              Pulls your public list directly from AniList. Nothing is stored on a server.
+            </p>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   )

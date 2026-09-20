@@ -5,8 +5,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'StoryDex',
-  description: 'Count stories, not seasons. Track anime franchises with StoryDex.',
-  generator: 'v0.app',
+  description: 'A map for the stories you carry. Track anime franchises as routes through time.',
   icons: {
     icon: [
       {
@@ -21,7 +20,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: 'dark',
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0f0f1e' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0a08' },
   ],
 }
 

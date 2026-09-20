@@ -220,8 +220,8 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
     if (!existing) {
       deduped.set(entry.media.id, entry)
     } else {
-      const existingPriority = STATUS_PRIORITY[existing.status] ?? 0
-      const newPriority = STATUS_PRIORITY[entry.status] ?? 0
+      const existingPriority = existing.status ? (STATUS_PRIORITY[existing.status] ?? 0) : 0
+      const newPriority = entry.status ? (STATUS_PRIORITY[entry.status] ?? 0) : 0
       if (newPriority > existingPriority) {
         deduped.set(entry.media.id, entry)
       }
