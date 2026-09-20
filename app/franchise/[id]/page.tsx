@@ -24,7 +24,7 @@ import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
-import type { Season } from '@/lib/franchise'
+import type { Franchise, Season } from '@/lib/franchise'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -43,18 +43,171 @@ function currentSeason(franchise: { seasons: Season[]; nextToWatch?: Season | nu
   return franchise.nextToWatch || franchise.seasons.find((season) => season.status === 'CURRENT') || null
 }
 
-export default function FranchiseDetail({ params }: PageProps) {
-  const [isImportOpen, setIsImportOpen] = useState(false)
-  const { id } = use(params)
-  const { franchises, loading } = useLibrary()
-  const franchise = franchises.find((item) => item.id === id)
-
+/**
+ * The story world — full-bleed cover of a franchise.
+ *
+ * Motion's useScroll is called HERE, inside the component that owns the
+ * ref'd <section>, so the ref is always attached before Motion measures it.
+ * (A ref whose element mounts later, or never, makes useScroll throw
+ * "Target ref is defined but not hydrated".)
+ */
+function FranchiseCover({
+  franchise,
+  pos,
+  years,
+  originYear,
+  epNow,
+}: {
+  franchise: Franchise
+  pos: { total: number; pos: number; fill: number; complete: boolean }
+  years: string
+  originYear: string
+  epNow: number | null
+}) {
   const coverRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: coverRef,
     offset: ['start start', 'end start'],
   })
   const artY = useTransform(scrollYProgress, [0, 1], ['0%', '14%'])
+  const next = franchise.nextToWatch
+  const pct = pos.fill * 100
+
+  return (
+    <section
+      ref={coverRef}
+      className="cover cover--deep"
+      style={storyAccentVars(franchise.id)}
+      aria-labelledby="franchise-title"
+    >
+      <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
+        <Image
+          src={franchise.bannerUrl || franchise.posterUrl}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+      </motion.div>
+      <div className="cover__light" aria-hidden="true" />
+      <div className="cover__atmos" aria-hidden="true" />
+      <span className="cover__watermark" aria-hidden="true">{franchise.name}</span>
+
+      <div className="cover__inner">
+        <div className="cover__body">
+          <div className="cover__toplink">
+            <Link href="/dashboard" className="back-link">
+              <ArrowLeft aria-hidden="true" /> All stories
+            </Link>
+            <a href="#route" className="back-link back-link--accent">
+              Trace the route <ArrowDown aria-hidden="true" />
+            </a>
+          </div>
+
+          <p className="cover__kicker">
+            <b>{franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}</b>
+            <span>a story in {franchise.seasons.length} movements</span>
+            <span className="coords coords--dim" style={{ letterSpacing: '0.1em' }}>{years}</span>
+          </p>
+
+          <h1 id="franchise-title" className="cover__title">
+            <WordReveal text={franchise.name} as="span" delay={0.45} emphasizeLast />
+          </h1>
+
+          <p className="cover__desc">{franchise.description}</p>
+
+          <div className="cover__cta">
+            <a href="#route" className="cta">
+              Walk the route <ArrowDown aria-hidden="true" />
+            </a>
+            {next?.siteUrl && epNow && (
+              <a href={next.siteUrl} target="_blank" rel="noreferrer" className="cta cta--accent">
+                Resume EP {epNow} <Play aria-hidden="true" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="cover__plate">
+          <StoryPlate
+            src={franchise.posterUrl}
+            alt={franchise.name}
+            plate="01"
+            caption={`origin — ${originYear || '—'}`}
+            size="md"
+            state="current"
+            tilt
+            eager
+          />
+        </div>
+
+        <div className="cover__route">
+          <div className="route">
+            <div className="route__ends">
+              <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
+              <span>{franchise.seasons.length} entries</span>
+              <span>Horizon</span>
+            </div>
+            <div className="route__track" style={{ '--route-fill': `${pct}%` } as CSSProperties}>
+              <div className="route__baseline" />
+              <div className="route__ink" />
+              {franchise.seasons.map((season, index) => {
+                const state = pos.complete
+                  ? 'past'
+                  : index < pos.pos
+                    ? 'past'
+                    : index === pos.pos && !pos.complete
+                      ? 'current'
+                      : 'future'
+                return (
+                  <Link
+                    key={season.id}
+                    href="#route"
+                    className={`route__tick route__tick--${state}`}
+                    style={{ left: `${pos.total > 1 ? (index / (pos.total - 1)) * 100 : 0}%` }}
+                    aria-label={season.name}
+                  >
+                    <i />
+                  </Link>
+                )
+              })}
+              {!pos.complete && (
+                <Beacon
+                  style={{ left: `${pct}%` }}
+                  flag={
+                    <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
+                      <MapPin aria-hidden="true" />
+                      <b>You</b>
+                      {next && <em>{next.name}</em>}
+                    </span>
+                  }
+                />
+              )}
+              {pos.complete && (
+                <Beacon
+                  style={{ left: '100%' }}
+                  flag={
+                    <span className="beacon__flag beacon__flag--end">
+                      <Check aria-hidden="true" />
+                      <b>Complete</b>
+                    </span>
+                  }
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export default function FranchiseDetail({ params }: PageProps) {
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const { id } = use(params)
+  const { franchises, loading } = useLibrary()
+  const franchise = franchises.find((item) => item.id === id)
 
   const data = useMemo(() => {
     if (!franchise) return null
@@ -130,7 +283,8 @@ export default function FranchiseDetail({ params }: PageProps) {
     ? Math.min(100, ((data.currentEntry.progress ?? 0) / data.currentEntry.episodes) * 100)
     : 0
   const pct = data.pos.fill * 100
-  const originYear = franchise.seasons[0]?.year || ''
+  const firstYear = franchise.seasons[0]?.year
+  const originYear = firstYear ? String(firstYear) : ''
   const next = data.next
 
   return (
@@ -139,140 +293,13 @@ export default function FranchiseDetail({ params }: PageProps) {
 
       <main>
         {/* ═══ THE WORLD — entering a story ═══════════════════════════ */}
-        <section
-          ref={coverRef}
-          className="cover cover--deep"
-          style={storyAccentVars(franchise.id)}
-          aria-labelledby="franchise-title"
-        >
-          <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
-            <Image
-              src={franchise.bannerUrl || franchise.posterUrl}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-          </motion.div>
-          <div className="cover__light" aria-hidden="true" />
-          <div className="cover__atmos" aria-hidden="true" />
-          <span className="cover__watermark" aria-hidden="true">{franchise.name}</span>
-
-          <div className="cover__inner">
-            <div className="cover__body">
-              <div className="cover__toplink">
-                <Link href="/dashboard" className="back-link">
-                  <ArrowLeft aria-hidden="true" /> All stories
-                </Link>
-                <a href="#route" className="back-link back-link--accent">
-                  Trace the route <ArrowDown aria-hidden="true" />
-                </a>
-              </div>
-
-              <p className="cover__kicker">
-                <b>{franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}</b>
-                <span>a story in {franchise.seasons.length} movements</span>
-                <span className="coords coords--dim" style={{ letterSpacing: '0.1em' }}>{data.years}</span>
-              </p>
-
-              <h1 id="franchise-title" className="cover__title">
-                <WordReveal text={franchise.name} as="span" delay={0.45} emphasizeLast />
-              </h1>
-
-              <p className="cover__desc">{franchise.description}</p>
-
-              <div className="cover__cta">
-                <a href="#route" className="cta">
-                  Walk the route <ArrowDown aria-hidden="true" />
-                </a>
-                {next?.siteUrl && data.epNow && (
-                  <a
-                    href={next.siteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="cta cta--accent"
-                  >
-                    Resume EP {data.epNow} <Play aria-hidden="true" />
-                  </a>
-                )}
-              </div>
-            </div>
-
-            <div className="cover__plate">
-              <StoryPlate
-                src={franchise.posterUrl}
-                alt={franchise.name}
-                plate="01"
-                caption={`origin — ${originYear || '—'}`}
-                size="md"
-                state="current"
-                tilt
-                eager
-              />
-            </div>
-
-            <div className="cover__route">
-              <div className="route">
-                <div className="route__ends">
-                  <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
-                  <span>{franchise.seasons.length} entries</span>
-                  <span>Horizon</span>
-                </div>
-                <div
-                  className="route__track"
-                  style={{ '--route-fill': `${pct}%` } as CSSProperties}
-                >
-                  <div className="route__baseline" />
-                  <div className="route__ink" />
-                  {franchise.seasons.map((season, index) => {
-                    const state = data.pos.complete
-                      ? 'past'
-                      : index < data.pos.pos
-                        ? 'past'
-                        : index === data.pos.pos && !data.pos.complete
-                          ? 'current'
-                          : 'future'
-                    return (
-                      <Link
-                        key={season.id}
-                        href="#route"
-                        className={`route__tick route__tick--${state}`}
-                        style={{ left: `${data.pos.total > 1 ? (index / (data.pos.total - 1)) * 100 : 0}%` }}
-                        aria-label={season.name}
-                      >
-                        <i />
-                      </Link>
-                    )
-                  })}
-                  {!data.pos.complete && (
-                    <Beacon
-                      style={{ left: `${pct}%` }}
-                      flag={
-                        <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
-                          <MapPin aria-hidden="true" />
-                          <b>You</b>
-                          {next && <em>{next.name}</em>}
-                        </span>
-                      }
-                    />
-                  )}
-                  {data.pos.complete && (
-                    <Beacon
-                      style={{ left: '100%' }}
-                      flag={
-                        <span className="beacon__flag beacon__flag--end">
-                          <Check aria-hidden="true" />
-                          <b>Complete</b>
-                        </span>
-                      }
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <FranchiseCover
+          franchise={franchise}
+          pos={data.pos}
+          years={data.years}
+          originYear={originYear}
+          epNow={data.epNow}
+        />
 
         {/* ═══ THE GATE — next destination, full width ════════════════ */}
         {next && (

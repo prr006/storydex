@@ -18,10 +18,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0c0a08' },
-  ],
+  colorScheme: 'light',
+  themeColor: '#f5f5f0',
 }
 
 export default function RootLayout({
