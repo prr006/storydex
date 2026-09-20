@@ -4,14 +4,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Check, Play } from 'lucide-react'
+import { storyAccentVars } from '@/lib/storyAccent'
 import type { Franchise } from '@/lib/franchise'
 
 interface FranchiseCardProps {
   franchise: Franchise
   index?: number
+  /** The first, largest card of the receding composition. */
+  featured?: boolean
 }
 
-export function FranchiseCard({ franchise, index = 0 }: FranchiseCardProps) {
+export function FranchiseCard({ franchise, index = 0, featured = false }: FranchiseCardProps) {
   const pct = franchise.totalSeasons > 0
     ? (franchise.completedSeasons / franchise.totalSeasons) * 100
     : 0
@@ -23,17 +26,19 @@ export function FranchiseCard({ franchise, index = 0 }: FranchiseCardProps) {
     <Link href={`/franchise/${franchise.id}`} aria-label={`View ${franchise.name}`}>
       <motion.div
         initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.6), ease: 'easeOut' }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3), ease: 'easeOut' }}
         whileHover={{ y: -6, transition: { duration: 0.18, ease: 'easeOut' } }}
-        className={`story-card ${accentClass}`}
+        className={`story-card ${accentClass} ${featured ? 'story-card--featured' : ''}`}
+        style={storyAccentVars(franchise.id)}
       >
         <div className="story-card__image">
           <Image
-            src={franchise.posterUrl}
+            src={franchise.bannerUrl || franchise.posterUrl}
             alt={franchise.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes={featured ? '(max-width: 900px) 100vw, 40vw' : '(max-width: 640px) 50vw, 30vw'}
             className="object-cover"
           />
           <div className="story-card__image-wash" />
@@ -47,7 +52,7 @@ export function FranchiseCard({ franchise, index = 0 }: FranchiseCardProps) {
         <div className="story-card__body">
           <div className="story-card__status">
             {isComplete ? <Check aria-hidden="true" /> : <Play aria-hidden="true" />}
-            {isComplete ? 'complete' : next ? 'in progress' : 'queued'}
+            {isComplete ? 'complete' : next ? `next · ${next.name}` : 'queued'}
           </div>
           <h3>
             {franchise.name}

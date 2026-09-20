@@ -7,19 +7,22 @@ import { motion } from 'framer-motion'
 import {
   ArrowDown,
   ArrowRight,
+  ArrowUpRight,
   Check,
   ChevronDown,
+  Circle,
   Filter,
+  MapPin,
   Play,
   Search,
   SlidersHorizontal,
   Sparkles,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
-import { FranchiseCard } from '@/components/FranchiseCard'
-import { StoryPath } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
+import { storyAccentVars } from '@/lib/storyAccent'
 import {
   FILTER_CHIPS,
   SORT_OPTIONS,
@@ -46,157 +49,209 @@ export default function Dashboard() {
       (count, franchise) => count + franchise.seasons.filter((season) => season.completed).length,
       0,
     )
-    const activeEntries = franchises.reduce(
-      (count, franchise) => count + franchise.seasons.filter((season) => season.status === 'CURRENT').length,
-      0,
-    )
-    const upcomingEntries = franchises.reduce(
-      (count, franchise) =>
-        count + franchise.seasons.filter((season) => season.airingStatus === 'NOT_YET_RELEASED').length,
-      0,
-    )
     return {
       totalEntries,
       completedEntries,
-      activeEntries,
-      upcomingEntries,
       completion: totalEntries ? Math.round((completedEntries / totalEntries) * 100) : 0,
     }
   }, [franchises])
 
   const otherStories = filtered.filter((franchise) => franchise.id !== activeStory?.id)
 
+  const next = activeStory?.nextToWatch ?? null
+  const nextIndex = next && activeStory
+    ? activeStory.seasons.findIndex((season) => season.id === next.id)
+    : -1
+  const epNow = next && next.episodes > 0 ? Math.min((next.progress ?? 0) + 1, next.episodes) : null
+  const storyPct = activeStory?.totalSeasons
+    ? Math.round((activeStory.completedSeasons / activeStory.totalSeasons) * 100)
+    : 0
+
   return (
-    <div className="app-shell">
+    <div className="app-shell dash">
       <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <main>
         {!loading && !isImported && (
           <div className="demo-ribbon">
-            <span><Sparkles aria-hidden="true" /> You are walking through a sample library.</span>
-            <button onClick={() => setIsImportOpen(true)}>Bring in your AniList <ArrowRight aria-hidden="true" /></button>
+            <span><Sparkles aria-hidden="true" /> Sample library active</span>
+            <button onClick={() => setIsImportOpen(true)}>Import your AniList <ArrowRight aria-hidden="true" /></button>
           </div>
         )}
 
         {loading ? (
-          <DashboardSkeleton />
+          <div className="dashboard-skeleton"><div className="skeleton-hero" /></div>
         ) : activeStory ? (
           <>
-            <section className="terrain-hero" aria-labelledby="current-story-title">
-              <div className="terrain-hero__image">
-                <Image
-                  src={activeStory.bannerUrl || activeStory.posterUrl}
-                  alt=""
-                  fill
-                  priority
-                  sizes="100vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="terrain-hero__grain" />
-              <div className="terrain-hero__scrim" />
-              <div className="terrain-hero__contour contour-one" />
-              <div className="terrain-hero__contour contour-two" />
+            {/* ═══ THE WORLD — immersive split hero ═══════════════════ */}
+            <section
+              className="world"
+              style={storyAccentVars(activeStory.id)}
+              aria-labelledby="current-story-title"
+            >
+              {/* LEFT: the story environment */}
+              <div className="world__env">
+                <div className="world__env-art">
+                  <Image
+                    src={activeStory.bannerUrl || activeStory.posterUrl}
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 900px) 100vw, 55vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="world__env-wash" />
+                <div className="world__env-grain" />
 
-              <div className="terrain-hero__content">
-                <div className="terrain-hero__eyebrow">
-                  <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> Current story</span>
-                  <span className="terrain-hero__coordinates">LIBRARY / 01 · {activeStory.seasons.length} WAYPOINTS</span>
+                {/* Poster floating in the environment */}
+                <div className="world__poster">
+                  <Image
+                    src={activeStory.posterUrl}
+                    alt={activeStory.name}
+                    fill
+                    sizes="240px"
+                    className="object-cover"
+                  />
                 </div>
-                <div className="terrain-hero__copy">
-                  <p className="terrain-hero__overline">You are here</p>
-                  <h1 id="current-story-title">{activeStory.name}</h1>
-                  <p className="terrain-hero__description">{activeStory.description}</p>
-                  <div className="terrain-hero__actions">
-                    <Link href={`/franchise/${activeStory.id}`} className="button button--light">
-                      Enter story <ArrowRight aria-hidden="true" />
-                    </Link>
-                    {activeStory.nextToWatch && (
-                      <span className="terrain-hero__next">
-                        <span className="status-pulse" />
-                        next · {activeStory.nextToWatch.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="terrain-hero__readout">
-                  <div>
-                    <span>Progress</span>
-                    <strong>{activeStory.totalSeasons ? Math.round((activeStory.completedSeasons / activeStory.totalSeasons) * 100) : 0}%</strong>
-                  </div>
-                  <div className="readout-line"><span style={{ width: `${activeStory.totalSeasons ? (activeStory.completedSeasons / activeStory.totalSeasons) * 100 : 0}%` }} /></div>
-                  <div className="readout-meta">
-                    <span>{activeStory.completedSeasons} recorded</span>
-                    <span>{activeStory.totalSeasons - activeStory.completedSeasons} ahead</span>
-                  </div>
-                </div>
-              </div>
-            </section>
 
-            <section className="dashboard-section dashboard-section--path">
-              <div className="section-intro">
-                <div>
-                  <p className="eyebrow"><i className="eyebrow__dot" /> Orientation</p>
-                  <h2>Know where the story goes.</h2>
-                </div>
-                <p>Every entry is a place on the same route. Your library keeps the distance visible.</p>
+                {/* Giant title bleeding into the environment */}
+                <span className="world__giant-title" aria-hidden="true">
+                  {activeStory.name}
+                </span>
               </div>
-              <StoryPath franchise={activeStory} />
-            </section>
 
-            {activeStory.nextToWatch && (
-              <section className="destination-band">
-                <div className="destination-band__glow" />
-                <div className="destination-band__label">
-                  <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--orange" /> Next destination</span>
-                  <span>up next in your route</span>
-                </div>
-                <div className="destination-band__main">
-                  <div className="destination-band__art">
-                    <Image
-                      src={activeStory.nextToWatch.posterUrl || activeStory.posterUrl}
-                      alt=""
-                      fill
-                      sizes="180px"
-                      className="object-cover"
-                    />
-                    <span><Play aria-hidden="true" /></span>
+              {/* RIGHT: the HUD — story coordinates */}
+              <div className="world__hud">
+                <div className="world__hud-inner">
+                  <div className="world__hud-top">
+                    <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> Current story</span>
+                    <span className="world__coord">
+                      {String(Math.max(filtered.indexOf(activeStory) + 1, 1)).padStart(2, '0')} / {filtered.length}
+                    </span>
                   </div>
-                  <div className="destination-band__copy">
-                    <p>{activeStory.name} · waypoint {activeStory.seasons.findIndex((season) => season.id === activeStory.nextToWatch?.id) + 1}</p>
-                    <h2>{activeStory.nextToWatch.name}</h2>
-                    <div className="destination-band__meta">
-                      <span>{activeStory.nextToWatch.format || 'TV'}</span>
-                      <span>{activeStory.nextToWatch.year || 'undated'}</span>
-                      <span>{activeStory.nextToWatch.episodes || '?'} episodes</span>
+
+                  <h1 id="current-story-title" className="world__title">{activeStory.name}</h1>
+
+                  <p className="world__desc">{activeStory.description}</p>
+
+                  {/* Position readout */}
+                  <div className="world__position">
+                    <div className="world__position-row">
+                      <span className="world__position-label"><MapPin aria-hidden="true" /> Your position</span>
+                      {next ? (
+                        <span className="world__position-value">
+                          {next.name}{epNow ? <em> · EP {epNow}/{next.episodes || '?'}</em> : null}
+                        </span>
+                      ) : (
+                        <span className="world__position-value world__position-value--done"><Check aria-hidden="true" /> Complete</span>
+                      )}
+                    </div>
+                    <div className="readout-line"><span style={{ width: `${storyPct}%` }} /></div>
+                    <div className="readout-meta">
+                      <span>{activeStory.completedSeasons} recorded</span>
+                      <span>{storyPct}% explored</span>
+                      <span>{activeStory.totalSeasons - activeStory.completedSeasons} ahead</span>
                     </div>
                   </div>
-                  <Link href={`/franchise/${activeStory.id}`} className="button button--outline">
-                    Continue <ArrowRight aria-hidden="true" />
-                  </Link>
+
+                  {/* Next destination */}
+                  {next && (
+                    <div className="world__next">
+                      <span className="world__next-label">Next destination</span>
+                      <div className="world__next-art">
+                        <Image
+                          src={next.posterUrl || activeStory.posterUrl}
+                          alt=""
+                          fill
+                          sizes="120px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="world__next-copy">
+                        <strong>{next.name}</strong>
+                        <span>{next.format || 'TV'} · {next.year || '—'} · {next.episodes || '?'} ep</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="world__actions">
+                    <Link href={`/franchise/${activeStory.id}`} className="button button--light">
+                      Enter the story <ArrowRight aria-hidden="true" />
+                    </Link>
+                    {next?.siteUrl && epNow && (
+                      <a href={next.siteUrl} target="_blank" rel="noreferrer" className="button button--ghost">
+                        Play EP {epNow} <Play aria-hidden="true" />
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Route timeline */}
+                  <div className="world__timeline">
+                    <div className="world__timeline-track">
+                      <div className="world__timeline-fill" style={{ width: `${activeStory.totalSeasons > 1 ? (nextIndex >= 0 ? (nextIndex / (activeStory.seasons.length - 1)) * 100 : storyPct) : 50}%` }} />
+                      {activeStory.seasons.map((season, index) => {
+                        const state = index < nextIndex ? 'past' : index === nextIndex ? 'current' : 'future'
+                        const left = activeStory.seasons.length > 1
+                          ? (index / (activeStory.seasons.length - 1)) * 100
+                          : 50
+                        return (
+                          <Link
+                            key={season.id}
+                            href={`/franchise/${activeStory.id}`}
+                            className={`world__tick world__tick--${state}`}
+                            style={{ left: `${left}%` }}
+                            aria-label={season.name}
+                          >
+                            <i />
+                            {state === 'current' && <u>You</u>}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                    <div className="world__timeline-ends">
+                      <span>Origin</span>
+                      <span>{activeStory.seasons.length} entries</span>
+                      <span>Horizon</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ═══ OTHER STORIES — horizontal shelf ═══════════════════ */}
+            {otherStories.length > 0 && (
+              <section className="shelf" aria-labelledby="shelf-title">
+                <div className="shelf__head">
+                  <div>
+                    <p className="eyebrow"><i className="eyebrow__dot" /> Other stories</p>
+                    <h2 id="shelf-title">Further along the shelf.</h2>
+                  </div>
+                  <span className="section-count">{otherStories.length} routes</span>
+                </div>
+                <div className="shelf__track">
+                  {otherStories.map((franchise, index) => (
+                    <Link
+                      key={franchise.id}
+                      href={`/franchise/${franchise.id}`}
+                      className="shelf__item"
+                      style={{ '--shelf-i': index } as CSSProperties}
+                    >
+                      <div className="shelf__art">
+                        <Image src={franchise.posterUrl} alt={franchise.name} fill sizes="180px" className="object-cover" />
+                      </div>
+                      <div className="shelf__info">
+                        <strong>{franchise.name}</strong>
+                        <span>{franchise.completedSeasons}/{franchise.totalSeasons} · {franchise.genres.slice(0, 2).join(' · ') || '—'}</span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </section>
             )}
 
-            <section className="dashboard-section dashboard-section--stories" id="stories">
-              <div className="section-intro section-intro--tight">
-                <div>
-                  <p className="eyebrow"><i className="eyebrow__dot" /> Other stories</p>
-                  <h2>Many worlds, one library.</h2>
-                </div>
-                <span className="section-count">{otherStories.length} routes</span>
-              </div>
-              {otherStories.length > 0 ? (
-                <div className="story-field">
-                  {otherStories.map((franchise, index) => (
-                    <FranchiseCard key={franchise.id} franchise={franchise} index={index} />
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-note">Your current route is the only story in view.</p>
-              )}
-            </section>
-
+            {/* ═══ ARCHIVE ═══════════════════════════════════════════ */}
             <section className="archive-section" aria-labelledby="archive-title">
               <div className="archive-section__head">
                 <div>
@@ -204,8 +259,8 @@ export default function Dashboard() {
                   <h2 id="archive-title">Archive of stories.</h2>
                 </div>
                 <div className="archive-section__stats">
-                  <span><strong>{franchises.length}</strong> stories</span>
                   <span><strong>{stats.totalEntries}</strong> entries</span>
+                  <span><strong>{stats.completedEntries}</strong> recorded</span>
                   <span><strong>{stats.completion}%</strong> complete</span>
                 </div>
               </div>
@@ -216,7 +271,7 @@ export default function Dashboard() {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Find a story or waypoint"
+                    placeholder="Find a story"
                     aria-label="Search your collection"
                   />
                 </label>
@@ -261,13 +316,20 @@ export default function Dashboard() {
                 <div className="empty-state">
                   <Search aria-hidden="true" />
                   <p>No stories match that view.</p>
-                  <button onClick={() => { setQuery(''); setActiveFilter('all') }}>Reset the archive</button>
+                  <button onClick={() => { setQuery(''); setActiveFilter('all') }}>Reset</button>
                 </div>
               )}
             </section>
           </>
         ) : (
-          <EmptyLibrary onImport={() => setIsImportOpen(true)} />
+          <section className="empty-library">
+            <div className="empty-library__orbit" />
+            <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> No route selected</span>
+            <h1>Your stories are waiting<br />to become a <em>map.</em></h1>
+            <p>Import your public AniList library and StoryDex will find the connections between seasons, films, and the places you have already been.</p>
+            <button className="button button--light" onClick={() => setIsImportOpen(true)}>Import from AniList <ArrowDown aria-hidden="true" /></button>
+            <div className="empty-library__marks"><span><Check /> grouped by story</span><span><Check /> stored locally</span><span><Check /> no account needed</span></div>
+          </section>
         )}
       </main>
 
@@ -278,28 +340,5 @@ export default function Dashboard() {
 
       <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
     </div>
-  )
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="dashboard-skeleton">
-      <div className="skeleton-hero" />
-      <div className="skeleton-block" />
-      <div className="skeleton-block skeleton-block--short" />
-    </div>
-  )
-}
-
-function EmptyLibrary({ onImport }: { onImport: () => void }) {
-  return (
-    <section className="empty-library">
-      <div className="empty-library__orbit" />
-      <span className="eyebrow"><i className="eyebrow__dot eyebrow__dot--live" /> No route selected</span>
-      <h1>Your stories are waiting<br />to become a <em>map.</em></h1>
-      <p>Import your public AniList library and StoryDex will find the connections between seasons, films, and the places you have already been.</p>
-      <button className="button button--light" onClick={onImport}>Import from AniList <ArrowDown aria-hidden="true" /></button>
-      <div className="empty-library__marks"><span><Check /> grouped by story</span><span><Check /> stored locally</span><span><Check /> no account needed</span></div>
-    </section>
   )
 }
