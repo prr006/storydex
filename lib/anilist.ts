@@ -1,6 +1,8 @@
 // AniList GraphQL API client.
 // Public, unauthenticated, CORS-enabled endpoint - no API key or server needed.
 
+import type { Franchise } from './franchise'
+
 const ANILIST_API_URL = 'https://graphql.anilist.co'
 
 export interface AniListTitle {
@@ -167,6 +169,41 @@ query ($ids: [Int]) {
 }
 `
 
+export interface AniListSearchResult {
+  id: number
+  title: AniListTitle
+  format: AniListMediaFormat | null
+  seasonYear: number | null
+  episodes: number | null
+  coverImage: { large: string | null; extraLarge: string | null } | null
+  bannerImage: string | null
+  description: string | null
+}
+
+const SEARCH_QUERY = `
+query ($search: String) {
+  Page(perPage: 24) {
+    media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      format
+      seasonYear
+      episodes
+      coverImage {
+        large
+        extraLarge
+      }
+      bannerImage
+      description(asHtml: false)
+    }
+  }
+}
+`
+
 export class AniListError extends Error {
   status?: number
   constructor(message: string, status?: number) {
@@ -176,7 +213,7 @@ export class AniListError extends Error {
   }
 }
 
-async function graphqlRequest<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+async function graphqlRequest<T>(query: string, variables: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   const response = await fetch(ANILIST_API_URL, {
     method: 'POST',
     headers: {
@@ -184,6 +221,7 @@ async function graphqlRequest<T>(query: string, variables: Record<string, unknow
       Accept: 'application/json',
     },
     body: JSON.stringify({ query, variables }),
+    signal,
   })
 
   let json: any
@@ -273,4 +311,50 @@ export async function fetchMediaByIds(ids: number[]): Promise<AniListMedia[]> {
   }
 
   return results
+}
+
+/**
+ * Real AniList search: returns the actual media AniList matches for a query.
+ * Supports cancellation so a closed/abandoned dialog never lingers.
+ */
+export async function searchAniList(
+  query: string,
+  signal?: AbortSignal,
+): Promise<AniListSearchResult[]> {
+  const trimmed = query.trim()
+  if (!trimmed) {
+    throw new AniListError('Type a title to search AniList.')
+  }
+  const data = await graphqlRequest<{ Page: { media: AniListSearchResult[] } | null }>(
+    SEARCH_QUERY,
+    { search: trimmed },
+    signal,
+  )
+  return data.Page?.media ?? []
+}
+
+/**
+ * Wraps selected media as library entries so they flow through the same
+ * expansion + grouping pipeline as a username import. New entries are marked
+ * CURRENT with no progress, which anchors "you are here" at the first episode.
+ */
+export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
+  return media.map((m) => ({
+    id: 0,
+    status: 'CURRENT',
+    score: 0,
+    progress: 0,
+    media: m,
+    isExpanded: true,
+  }))
+}
+
+/**
+ * Merges newly imported franchises into an existing stored library.
+ * Franchises already in the library keep their recorded progress; new ones
+ * are appended. Order: existing library first, then additions.
+ */
+export function mergeFranchises(existing: Franchise[], additions: Franchise[]): Franchise[] {
+  const known = new Set(existing.map((franchise) => franchise.id))
+  return [...existing, ...additions.filter((franchise) => !known.has(franchise.id))]
 }
