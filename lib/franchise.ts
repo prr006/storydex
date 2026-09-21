@@ -356,3 +356,23 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
 
   return franchises
 }
+
+/**
+ * Short editorial line for hero compositions. Derived strictly from the
+ * franchise's own stored data (never invented): the first sentence of the
+ * description, truncated at a word boundary. When no description exists it
+ * falls back to a plain fact line built from the seasons.
+ */
+export function heroSummary(franchise: Franchise, maxLen = 140): string {
+  const raw = (franchise.description || '').replace(/\s+/g, ' ').trim()
+  const meaningful = raw && raw !== 'No description available.' ? raw : ''
+  if (!meaningful) {
+    const movements = franchise.seasons.length
+    const firstYear = franchise.seasons[0]?.year
+    const yearBit = firstYear ? `${firstYear} · ` : ''
+    return `${yearBit}${movements} recorded ${movements === 1 ? 'movement' : 'movements'} on one continuous route`
+  }
+  const first = (meaningful.match(/^[^.!?]+[.!?]*/) || [meaningful])[0].trim()
+  if (first.length <= maxLen) return first
+  return first.slice(0, maxLen).replace(/\s+\S*$/, '') + '…'
+}

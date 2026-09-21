@@ -29,6 +29,7 @@ import {
   SORT_OPTIONS,
   useDashboardControls,
 } from '@/lib/useDashboardControls'
+import { heroSummary } from '@/lib/franchise'
 import type { Franchise } from '@/lib/franchise'
 
 const MotionLink = motion.create(Link)
@@ -100,9 +101,6 @@ function DashboardCover({
       </motion.div>
       <motion.div className="cover__light" style={{ y: hazeY }} aria-hidden="true" />
       <div className="cover__atmos" aria-hidden="true" />
-      <span className="cover__watermark" aria-hidden="true">
-        {story.name}
-      </span>
 
       <div className="cover__inner">
         <div className="cover__body">
@@ -110,21 +108,24 @@ function DashboardCover({
             <span className="label">
               <i className="label__dot label__dot--live" aria-hidden="true" /> Current story
             </span>
-            <span className="coords coords--dim">
-              {String(storyNumber).padStart(2, '0')} / {String(total).padStart(2, '0')}
-            </span>
           </div>
 
-          <p className="cover__kicker">
-            <b>{story.genres.slice(0, 2).join(' · ') || 'unclassified'}</b>
-            <span>{story.completedSeasons} of {story.totalSeasons} recorded</span>
-          </p>
+          {/* one compact metadata zone: human-facing line + factual line */}
+          <div className="cover__meta">
+            <span className="cover__meta--genres">
+              {story.genres.slice(0, 2).join(' · ') || 'unclassified'}
+            </span>
+            <span className="cover__meta--facts">
+              {String(storyNumber).padStart(2, '0')} / {String(total).padStart(2, '0')} in your atlas
+              {originYear ? ` · ${originYear}` : ''} · {String(story.completedSeasons).padStart(2, '0')} / {String(story.totalSeasons).padStart(2, '0')} recorded
+            </span>
+          </div>
 
           <h1 id="current-story-title" className="cover__title">
             <WordReveal text={story.name} as="span" delay={0.45} emphasizeLast />
           </h1>
 
-          <p className="cover__desc">{story.description}</p>
+          <p className="cover__desc">{heroSummary(story)}</p>
 
           <div className="cover__cta">
             <Link href={`/franchise/${story.id}`} className="cta">

@@ -24,6 +24,7 @@ import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
+import { heroSummary } from '@/lib/franchise'
 import type { Franchise, Season } from '@/lib/franchise'
 
 interface PageProps {
@@ -92,7 +93,6 @@ function FranchiseCover({
       </motion.div>
       <div className="cover__light" aria-hidden="true" />
       <div className="cover__atmos" aria-hidden="true" />
-      <span className="cover__watermark" aria-hidden="true">{franchise.name}</span>
 
       <div className="cover__inner">
         <div className="cover__body">
@@ -105,17 +105,21 @@ function FranchiseCover({
             </a>
           </div>
 
-          <p className="cover__kicker">
-            <b>{franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}</b>
-            <span>a story in {franchise.seasons.length} movements</span>
-            <span className="coords coords--dim" style={{ letterSpacing: '0.1em' }}>{years}</span>
-          </p>
+          {/* one compact metadata zone: human-facing line + factual line */}
+          <div className="cover__meta">
+            <span className="cover__meta--genres">
+              {franchise.genres.slice(0, 3).join(' · ') || 'unclassified'}
+            </span>
+            <span className="cover__meta--facts">
+              {years} · {franchise.seasons.length} {franchise.seasons.length === 1 ? 'movement' : 'movements'}
+            </span>
+          </div>
 
           <h1 id="franchise-title" className="cover__title">
             <WordReveal text={franchise.name} as="span" delay={0.45} emphasizeLast />
           </h1>
 
-          <p className="cover__desc">{franchise.description}</p>
+          <p className="cover__desc">{heroSummary(franchise)}</p>
 
           <div className="cover__cta">
             <a href="#route" className="cta">
