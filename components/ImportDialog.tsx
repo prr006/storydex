@@ -15,7 +15,7 @@ import {
   type AniListSearchResult,
   type MediaType,
 } from '@/lib/anilist'
-import { groupFranchises } from '@/lib/franchise'
+import { groupFranchises, expandFranchises } from '@/lib/franchise'
 import { loadLibrary, saveLibrary } from '@/lib/storage'
 
 interface ImportDialogProps {
@@ -170,10 +170,12 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
         type: (typeById.get(id) ?? 'ANIME') as MediaType,
       }))
       const media = await fetchMixedMediaByIds(idsWithType)
-      // Exactly what the user selected becomes entries — AniList relations
-      // are used afterwards only to GROUP these with entries you already
-      // have. Sequels/prequels/adaptations are never added automatically.
-      const imported = groupFranchises(entriesFromMedia(media))
+      // The selected media become user entries (inUserList=true); their
+      // franchise graph is completed with relation-discovered media, which
+      // are marked inUserList=false — discovered, never watched.
+      const entries = entriesFromMedia(media)
+      const discovered = await expandFranchises(entries)
+      const imported = groupFranchises(entries, discovered)
       const stored = loadLibrary()
       const merged = mergeFranchises(stored?.franchises ?? [], imported)
       saveLibrary(stored?.username ?? '', merged)
@@ -207,9 +209,13 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
         counts[type] = count
         report()
       })
-      // Group ONLY the user's actual list entries — relations are grouping
-      // metadata, never a source of new entries.
-      const franchises = groupFranchises([...result.anime, ...result.manga])
+      // The user's list entries are inUserList=true; their relation graph
+      // is completed with discovered media (inUserList=false) so each
+      // franchise shows the full story route — with the user's state only
+      // on the entries they actually own.
+      const allEntries = [...result.anime, ...result.manga]
+      const discovered = await expandFranchises(allEntries)
+      const franchises = groupFranchises(allEntries, discovered)
       // Whole-list import = this profile IS the library: it replaces any
       // previously stored one, and the imported username becomes the
       // stored identity.

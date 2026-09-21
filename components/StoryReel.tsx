@@ -189,13 +189,15 @@ function ReelScene({
               <div className="route__baseline" />
               <div className="route__ink" />
               {franchise.seasons.map((season, index) => {
-                const state = pos.complete
-                  ? 'past'
-                  : index < pos.pos
+                const state = !season.inUserList
+                  ? 'future' // discovered entries are unentered routes
+                  : pos.complete
                     ? 'past'
-                    : index === pos.pos && !pos.complete
-                      ? 'current'
-                      : 'future'
+                    : index < pos.pos
+                      ? 'past'
+                      : index === pos.pos && !pos.complete
+                        ? 'current'
+                        : 'future'
                 return (
                   <Link
                     key={season.id}

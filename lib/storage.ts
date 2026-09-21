@@ -74,13 +74,29 @@ export function isValidLibrary(data: unknown): data is StoredLibrary {
   return typeof lib.username === 'string' && Array.isArray(lib.franchises)
 }
 
+/**
+ * Backfill provenance for libraries stored before inUserList existed:
+ * every season in those libraries was a genuine list entry, so they default
+ * to inUserList=true. This is not a guess — pre-provenance storage only ever
+ * contained user-listed media.
+ */
+function withProvenance(library: StoredLibrary): StoredLibrary {
+  return {
+    ...library,
+    franchises: library.franchises.map((franchise) => ({
+      ...franchise,
+      seasons: franchise.seasons.map((season) => ({ ...season, inUserList: season.inUserList ?? true })),
+    })),
+  }
+}
+
 export function loadLibrary(): StoredLibrary | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      return isValidLibrary(parsed) ? parsed : null
+      return isValidLibrary(parsed) ? withProvenance(parsed) : null
     }
   } catch {
     return null
@@ -95,7 +111,7 @@ export function loadLibrary(): StoredLibrary | null {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
       window.localStorage.removeItem(LEGACY_KEY)
     }
-    return migrated
+    return migrated ? withProvenance(migrated) : null
   } catch {
     return null
   }

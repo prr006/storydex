@@ -1,12 +1,19 @@
-import { type AniListListEntry, type AniListMedia, type AniListRelationType, type MediaType } from './anilist'
+import { fetchMediaByIds, type AniListListEntry, type AniListMedia, type AniListRelationEdge, type AniListRelationType, type MediaType } from './anilist'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-// The data model below is a PROJECTION over the user's own AniList entries.
-// A season exists here ONLY if the user listed it on AniList or explicitly
-// selected it via "Find a story". Nothing in this module fetches, invents or
-// supplements media beyond the entries it is given.
+// STORYDEX = franchise graph + user AniList state, layered.
+//
+// A franchise contains the COMPLETE relevant graph: the entries the user
+// actually listed (or explicitly selected) PLUS related media discovered
+// through AniList relations. Every season carries its provenance:
+//   inUserList: true  -> the user owns this entry (has status/progress)
+//   inUserList: false -> franchise-discovered (NOT_IN_LIST; zero progress)
+//
+// All progress/completion/next-to-watch calculations use ONLY
+// inUserList=true seasons. Discovered seasons exist so the map shows the
+// whole story route — never as if the user watched or read them.
 
 
 export interface Season {
@@ -34,6 +41,14 @@ export interface Season {
    * episodes watched (anime) / chapters read (manga) / volumes read (novel).
    */
   progress?: number
+  /**
+   * Provenance — the source of truth for "does the user own this entry?":
+   * true  = in the user's AniList (or explicitly selected via Find a story)
+   * false = discovered through franchise relations; NOT_IN_LIST, no progress
+   * Legacy (pre-provenance) stored entries default to true on load — they
+   * were all genuine list entries.
+   */
+  inUserList: boolean
   aniListId?: number
   posterUrl?: string
   siteUrl?: string | null
@@ -260,8 +275,77 @@ class DisjointSet {
  *    earliest entry (by release year, then AniList id) as the "primary"
  *    entry for name/poster/banner/description.
  */
-export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
-  // ── Pass 0: deduplicate input by AniList media ID ────────────────────────
+/**
+ * Franchise discovery: walks the AniList relation graph outward from the
+ * user's OWN entries (conservative relation set only, per media type) and
+ * returns the related media the user does NOT have in their list.
+ *
+ * Contract:
+ * - Returns ONLY discovered media (never the user's own entries, which are
+ *   already fetched with their list state).
+ * - Nothing here is a library entry by itself: it is graph data. The
+ *   caller (groupFranchises) marks it inUserList=false, status
+ *   NOT_IN_LIST, zero progress.
+ */
+export async function expandFranchises(entries: AniListListEntry[]): Promise<AniListMedia[]> {
+  const visitedIds = new Set<number>(entries.map((e) => e.media.id))
+  const discovered = new Map<number, AniListMedia>()
+  // Queued ids each carry their AniList media type — manga ids must never be
+  // fetched through a type: ANIME query (and vice versa).
+  let queued = new Map<number, MediaType>()
+
+  const queueEdge = (edges: AniListRelationEdge[] | undefined) => {
+    for (const edge of edges ?? []) {
+      if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
+      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
+      if (!visitedIds.has(edge.node.id)) queued.set(edge.node.id, edge.node.type)
+    }
+  }
+
+  for (const entry of entries) {
+    queueEdge(entry.media.relations?.edges)
+  }
+
+  while (queued.size > 0) {
+    const byType = new Map<MediaType, number[]>()
+    for (const [id, type] of queued) {
+      visitedIds.add(id)
+      const list = byType.get(type) ?? []
+      list.push(id)
+      byType.set(type, list)
+    }
+    queued = new Map()
+
+    for (const [type, ids] of byType) {
+      const fetchedMedia = await fetchMediaByIds(ids, type)
+      for (const media of fetchedMedia) {
+        if (!discovered.has(media.id)) discovered.set(media.id, media)
+        queueEdge(media.relations?.edges)
+      }
+    }
+  }
+
+  return Array.from(discovered.values())
+}
+
+/**
+ * Builds franchises over the user's entries PLUS franchise-discovered media.
+ *
+ * SOURCE OF TRUTH: `userEntries` are exactly the user's AniList MediaList
+ * entries (or explicitly selected media). `discoveredMedia` (from
+ * expandFranchises) joins the franchise graph as inUserList=false seasons —
+ * they are displayed as unentered route entries but NEVER carry user
+ * status/progress and NEVER count toward completion, resume or progress.
+ *
+ * The franchise's primary entry (id, display name, poster, banner,
+ * description) is chosen ONLY from user entries — a discovered prequel can
+ * never rename the franchise after the user's own earliest entry.
+ */
+export function groupFranchises(
+  userEntries: AniListListEntry[],
+  discoveredMedia: AniListMedia[] = [],
+): Franchise[] {
+  // ── Deduplicate user input by AniList media ID ──────────────────────────
   // AniList's API can return the same media.id in multiple lists
   // (e.g. once in COMPLETED and once in PLANNING). We keep only the
   // entry with the highest status-priority so the more informative one
@@ -275,7 +359,7 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
     PLANNING: 1,
   }
   const deduped = new Map<number, AniListListEntry>()
-  for (const entry of rawEntries) {
+  for (const entry of userEntries) {
     const existing = deduped.get(entry.media.id)
     if (!existing) {
       deduped.set(entry.media.id, entry)
@@ -287,35 +371,51 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
       }
     }
   }
-  const entries = Array.from(deduped.values())
+  const userEntryList = Array.from(deduped.values())
 
-  const byId = new Map<number, AniListListEntry>()
-  for (const entry of entries) {
-    byId.set(entry.media.id, entry)
+  const userById = new Map<number, AniListListEntry>()
+  for (const entry of userEntryList) {
+    userById.set(entry.media.id, entry)
   }
 
-  const ds = new DisjointSet()
-  for (const id of byId.keys()) ds.add(id)
-
-  // Pass 1: relation edges between entries the user actually owns.
-  // Media-aware: ANIME↔ANIME, MANGA↔MANGA and cross-media edges all count,
-  // but ONLY for the conservative "same story" relation types — an anime
-  // adaptation of a manga (ADAPTATION/SOURCE) is deliberately NOT a merge.
-  for (const entry of entries) {
-    const edges = entry.media.relations?.edges ?? []
-    for (const edge of edges) {
-      if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
-      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
-      if (!byId.has(edge.node.id)) continue // only merge within the user's own list
-      ds.union(entry.media.id, edge.node.id)
+  const discoveredById = new Map<number, AniListMedia>()
+  for (const media of discoveredMedia) {
+    if (!userById.has(media.id) && !discoveredById.has(media.id)) {
+      discoveredById.set(media.id, media)
     }
   }
 
-  // Pass 2: normalized-title fallback, grouped by media type + normalized
-  // base string. The type in the key keeps a manga and its anime adaptation
-  // (same title, different medium) as two distinct stories.
+  // The union graph spans user entries AND discovered media.
+  const allIds = [...userById.keys(), ...discoveredById.keys()]
+  const ds = new DisjointSet()
+  for (const id of allIds) ds.add(id)
+
+  const unionEdge = (mediaId: number, edges: AniListRelationEdge[] | undefined) => {
+    for (const edge of edges ?? []) {
+      if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
+      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
+      // Both endpoints must be part of THIS franchise graph (user list or
+      // discovered). Media the user doesn't list and that we didn't
+      // discover are simply not here.
+      if (!userById.has(edge.node.id) && !discoveredById.has(edge.node.id)) continue
+      ds.union(mediaId, edge.node.id)
+    }
+  }
+
+  // Pass 1: relation edges over the combined graph.
+  for (const entry of userEntryList) {
+    unionEdge(entry.media.id, entry.media.relations?.edges)
+  }
+  for (const media of discoveredById.values()) {
+    unionEdge(media.id, media.relations?.edges)
+  }
+
+  // Pass 2: normalized-title fallback — user entries only. Discovered media
+  // are always relation-connected (they were discovered through relations),
+  // so title-matching is only needed to bridge incomplete relation graphs
+  // among entries the user actually owns.
   const byNormalizedTitle = new Map<string, number[]>()
-  for (const entry of entries) {
+  for (const entry of userEntryList) {
     const normalized = normalizeTitle(preferredTitle(entry.media.title))
     if (normalized.length < 3) continue // too short/generic to trust
     const key = `${entry.media.type}:${normalized}`
@@ -332,110 +432,168 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
     }
   }
 
-  // Collect entries per root.
-  const groups = new Map<number, AniListListEntry[]>()
-  for (const entry of entries) {
+  // Collect BOTH kinds of nodes per root.
+  const userGroups = new Map<number, AniListListEntry[]>()
+  for (const entry of userEntryList) {
     const root = ds.find(entry.media.id)
-    const group = groups.get(root)
-    if (group) {
-      group.push(entry)
-    } else {
-      groups.set(root, [entry])
-    }
+    const group = userGroups.get(root)
+    if (group) group.push(entry)
+    else userGroups.set(root, [entry])
+  }
+  const discoveredGroups = new Map<number, AniListMedia[]>()
+  for (const media of discoveredById.values()) {
+    const root = ds.find(media.id)
+    const group = discoveredGroups.get(root)
+    if (group) group.push(media)
+    else discoveredGroups.set(root, [media])
   }
 
   const franchises: Franchise[] = []
 
-  for (const groupEntries of groups.values()) {
-    // ── Final dedup pass within each group ───────────────────────────────
-    // The DisjointSet merge is sound, but defensive dedup here ensures no
-    // duplicate season rows survive even if the same media.id ends up in a
-    // group via multiple relation edges (which can happen in complex graphs
-    // like Steel Ball Run or Fate/kaleid liner).
-    const visitedIds = new Set<number>()
-    const uniqueGroupEntries = groupEntries.filter((e) => {
-      if (visitedIds.has(e.media.id)) return false
-      visitedIds.add(e.media.id)
+  for (const [root, groupUserEntries] of userGroups) {
+    const groupDiscovered = discoveredGroups.get(root) ?? []
+
+    // Defensive dedup within the group (complex graphs can reach the same
+    // node through multiple edges).
+    const seenUser = new Set<number>()
+    const uniqueUser = groupUserEntries.filter((e) => {
+      if (seenUser.has(e.media.id)) return false
+      seenUser.add(e.media.id)
+      return true
+    })
+    const seenDiscovered = new Set<number>()
+    const uniqueDiscovered = groupDiscovered.filter((m) => {
+      if (seenDiscovered.has(m.id)) return false
+      seenDiscovered.add(m.id)
       return true
     })
 
-    // Sort chronologically for a sensible timeline (undated entries last).
-    const sorted = [...uniqueGroupEntries].sort((a, b) => {
+    // Chronological route over the WHOLE graph (discovered entries keep
+    // their natural place on the timeline).
+    const sortedUser = [...uniqueUser].sort((a, b) => {
       const yearA = a.media.seasonYear ?? a.media.startDate?.year ?? Infinity
       const yearB = b.media.seasonYear ?? b.media.startDate?.year ?? Infinity
       if (yearA !== yearB) return yearA - yearB
       return a.media.id - b.media.id
     })
+    const sortedDiscovered = [...uniqueDiscovered].sort((a, b) => {
+      const yearA = a.seasonYear ?? a.startDate?.year ?? Infinity
+      const yearB = b.seasonYear ?? b.startDate?.year ?? Infinity
+      if (yearA !== yearB) return yearA - yearB
+      return a.id - b.id
+    })
 
+    const userYear = (e: AniListListEntry) => e.media.seasonYear ?? e.media.startDate?.year ?? Infinity
+    const dYear = (m: AniListMedia) => m.seasonYear ?? m.startDate?.year ?? Infinity
+    const merged: { year: number; id: number; kind: 'user' | 'discovered'; ref: AniListListEntry | AniListMedia }[] = [
+      ...sortedUser.map((e) => ({ year: userYear(e), id: e.media.id, kind: 'user' as const, ref: e })),
+      ...sortedDiscovered.map((m) => ({ year: dYear(m), id: m.id, kind: 'discovered' as const, ref: m })),
+    ].sort((a, b) => (a.year !== b.year ? a.year - b.year : a.id - b.id))
 
-    const primary = sorted[0]
+    // PRIMARY = earliest USER entry. A discovered prequel (older year) must
+    // never become the franchise's identity: the display name is pinned to
+    // media the user actually has.
+    const primary = sortedUser[0]
 
-    const seasons: Season[] = sorted.map((entry) => {
-      const completed = entry.status === 'COMPLETED' || entry.status === 'REPEATING'
-      const mediaType: MediaType = entry.media.type === 'MANGA' ? 'MANGA' : 'ANIME'
-      const format = entry.media.format ?? (mediaType === 'MANGA' ? 'MANGA' : 'TV')
-      // Each medium maps from its OWN AniList fields — never a substitute:
-      //   ANIME    → media.episodes
-      //   MANGA    → media.chapters   (NOT media.episodes)
-      //   NOVEL    → media.volumes
-      //   ONE_SHOT → no numbered total
+    const seasons: Season[] = merged.map((item) => {
+      if (item.kind === 'user') {
+        const entry = item.ref as AniListListEntry
+        const completed = entry.status === 'COMPLETED' || entry.status === 'REPEATING'
+        const mediaType: MediaType = entry.media.type === 'MANGA' ? 'MANGA' : 'ANIME'
+        const format = entry.media.format ?? (mediaType === 'MANGA' ? 'MANGA' : 'TV')
+        // Each medium maps from its OWN AniList fields — never a substitute:
+        //   ANIME    → media.episodes
+        //   MANGA    → media.chapters   (NOT media.episodes)
+        //   NOVEL    → media.volumes
+        //   ONE_SHOT → no numbered total
+        const isNovel = mediaType === 'MANGA' && format === 'NOVEL'
+        return {
+          id: String(entry.media.id),
+          name: preferredTitle(entry.media.title),
+          mediaType,
+          year: entry.media.seasonYear ?? entry.media.startDate?.year ?? 0,
+          completed,
+          status: entry.status,
+          format,
+          score: entry.score ?? 0,
+          episodes: mediaType === 'ANIME' ? (entry.media.episodes ?? 0) : undefined,
+          chapters:
+            mediaType === 'MANGA' && format === 'MANGA' ? (entry.media.chapters ?? 0) : undefined,
+          volumes: isNovel ? (entry.media.volumes ?? 0) : undefined,
+          // Progress is native per medium:
+          //   ANIME / MANGA → list "progress" (episodes watched / chapters read)
+          //   NOVEL         → list "progressVolumes" (volumes read). The novel
+          //                   "progress" field is NOT a volume count, so it is
+          //                   deliberately ignored for novels.
+          //   ONE_SHOT      → no numbered progress.
+          progress: isNovel ? (entry.progressVolumes ?? 0) : (entry.progress ?? 0),
+          inUserList: true,
+          aniListId: entry.media.id,
+          posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
+          siteUrl: entry.media.siteUrl,
+          airingStatus: entry.media.status?.status ?? null,
+        }
+      }
+      // Discovered entry: full media facts (so the route can show its size),
+      // but NO user state. NOT_IN_LIST, zero progress, never completed.
+      const media = item.ref as AniListMedia
+      const mediaType: MediaType = media.type === 'MANGA' ? 'MANGA' : 'ANIME'
+      const format = media.format ?? (mediaType === 'MANGA' ? 'MANGA' : 'TV')
       const isNovel = mediaType === 'MANGA' && format === 'NOVEL'
       return {
-        id: String(entry.media.id),
-        name: preferredTitle(entry.media.title),
+        id: String(media.id),
+        name: preferredTitle(media.title),
         mediaType,
-        year: entry.media.seasonYear ?? entry.media.startDate?.year ?? 0,
-        completed,
-        status: entry.status,
+        year: media.seasonYear ?? media.startDate?.year ?? 0,
+        completed: false,
+        status: 'NOT_IN_LIST',
         format,
-        score: entry.score ?? 0,
-        episodes: mediaType === 'ANIME' ? (entry.media.episodes ?? 0) : undefined,
-        chapters:
-          mediaType === 'MANGA' && format === 'MANGA' ? (entry.media.chapters ?? 0) : undefined,
-        volumes: isNovel ? (entry.media.volumes ?? 0) : undefined,
-        // Progress is native per medium:
-        //   ANIME / MANGA → list "progress" (episodes watched / chapters read)
-        //   NOVEL         → list "progressVolumes" (volumes read). The novel
-        //                   "progress" field is NOT a volume count, so it is
-        //                   deliberately ignored for novels.
-        //   ONE_SHOT      → no numbered progress.
-        progress: isNovel ? (entry.progressVolumes ?? 0) : (entry.progress ?? 0),
-        aniListId: entry.media.id,
-        posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
-        siteUrl: entry.media.siteUrl,
-        airingStatus: entry.media.status?.status ?? null,
+        score: 0,
+        episodes: mediaType === 'ANIME' ? (media.episodes ?? 0) : undefined,
+        chapters: mediaType === 'MANGA' && format === 'MANGA' ? (media.chapters ?? 0) : undefined,
+        volumes: isNovel ? (media.volumes ?? 0) : undefined,
+        progress: 0,
+        inUserList: false,
+        aniListId: media.id,
+        posterUrl: media.coverImage?.extraLarge || media.coverImage?.large || '/placeholder.svg',
+        siteUrl: media.siteUrl,
+        airingStatus: media.status?.status ?? null,
       }
     })
 
     const genreSet = new Set<string>()
-    for (const entry of sorted) {
+    for (const entry of sortedUser) {
       for (const genre of entry.media.genres) genreSet.add(genre)
     }
 
-    const description = (primary.media.description || sorted.find((e) => e.media.description)?.media.description || '')
+    const userDescription =
+      primary.media.description || sortedUser.find((e) => e.media.description)?.media.description || ''
+    const description = userDescription
       .replace(/<br\s*\/?>/gi, ' ')
       .replace(/<[^>]+>/g, '')
       .trim()
 
-    const completedSeasons = seasons.filter((s) => s.completed).length
+    // USER-OWNED counts only — discovered entries never count as watched.
+    const userSeasons = seasons.filter((s) => s.inUserList)
+    const completedSeasons = userSeasons.filter((s) => s.completed).length
 
     franchises.push({
       id: String(primary.media.id),
       name: preferredTitle(primary.media.title),
       posterUrl: primary.media.coverImage?.extraLarge || primary.media.coverImage?.large || '/placeholder.svg',
-      bannerUrl: sorted.find((e) => e.media.bannerImage)?.media.bannerImage ?? null,
-      totalSeasons: seasons.length,
+      bannerUrl: sortedUser.find((e) => e.media.bannerImage)?.media.bannerImage ?? null,
+      totalSeasons: userSeasons.length,
       completedSeasons,
       genres: Array.from(genreSet),
       description: description || 'No description available.',
       seasons,
       aniListId: primary.media.id,
-      nextToWatch: seasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
+      nextToWatch: userSeasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
     })
   }
 
-  // Most-complete / most-recently-relevant franchises first.
-  franchises.sort((a, b) => b.totalSeasons - a.totalSeasons || a.name.localeCompare(b.name))
+  // Largest stories first (route length over the whole graph), then name.
+  franchises.sort((a, b) => b.seasons.length - a.seasons.length || a.name.localeCompare(b.name))
 
   return franchises
 }
@@ -452,16 +610,18 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
 export type MediaScope = 'ALL' | 'ANIME' | 'MANGA'
 
 /**
- * Derived view of the library for a media scope:
+ * Derived view of the library for a media scope. Filters the COMPLETE
+ * franchise graph (user-listed AND franchise-discovered entries — a
+ * discovered manga still belongs to the story's manga route):
  *  - ALL   → every season of every franchise (the stored library, as-is)
  *  - ANIME → only seasons where mediaType === 'ANIME'
  *  - MANGA → only seasons where mediaType === 'MANGA'
  *
- * Franchises with no season in the scoped medium are excluded entirely.
- * `totalSeasons`, `completedSeasons` and `nextToWatch` are recomputed from
- * the subset so every derived UI (index glyph, reel route, resume CTA,
- * sorting, progress and completion math) operates on the scoped seasons —
- * never on a hidden season of the other medium.
+ * Franchises with no season in the scoped medium (in the whole graph) are
+ * excluded entirely. `totalSeasons`, `completedSeasons` and `nextToWatch`
+ * are recomputed over the scoped subset — and ONLY over inUserList seasons,
+ * so progress/watched state still comes exclusively from the user's own
+ * entries, even when the visible seasons include discovered ones.
  *
  * The original franchises are never split, mutated or re-stored; the
  * franchise detail page still renders the complete story from the stored
@@ -474,13 +634,14 @@ export function applyMediaScope(franchises: Franchise[], scope: MediaScope): Fra
   for (const franchise of franchises) {
     const seasons = franchise.seasons.filter((s) => s.mediaType === type)
     if (seasons.length === 0) continue
-    const completedSeasons = seasons.filter((s) => s.completed).length
+    const userSeasons = seasons.filter((s) => s.inUserList)
+    const completedSeasons = userSeasons.filter((s) => s.completed).length
     result.push({
       ...franchise,
       seasons,
-      totalSeasons: seasons.length,
+      totalSeasons: userSeasons.length,
       completedSeasons,
-      nextToWatch: seasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
+      nextToWatch: userSeasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
     })
   }
   return result

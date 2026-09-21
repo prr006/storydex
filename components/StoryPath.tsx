@@ -34,18 +34,24 @@ export function getCurrentIndex(franchise: Franchise) {
 
 /**
  * Where the traveler stands on this story's route, as a 0..1 fraction:
- * 0 = origin, 1 = horizon. Completed routes sit at the horizon.
+ * 0 = origin, 1 = horizon. The route spans the WHOLE franchise graph
+ * (user + discovered entries); "complete" means every USER entry is
+ * completed — discovered entries are part of the map, not the record.
  */
 export function storyPosition(franchise: Franchise) {
   const total = franchise.seasons.length
   const currentIndex = getCurrentIndex(franchise)
-  const complete = total > 0 && franchise.completedSeasons === total
+  const userTotal = franchise.seasons.filter((season) => season.inUserList).length
+  const complete = userTotal > 0 && franchise.completedSeasons === userTotal
   const pos = complete ? total - 1 : currentIndex >= 0 ? currentIndex : 0
   const fill = total > 1 ? pos / (total - 1) : complete ? 1 : 0
   return { total, currentIndex, complete, pos, fill }
 }
 
 function getSeasonState(season: Season, index: number, currentIndex: number): 'past' | 'current' | 'future' {
+  // A franchise-discovered entry is an available, unentered route — it is
+  // never "behind you" no matter where it sits on the timeline.
+  if (!season.inUserList) return 'future'
   if (index === currentIndex || season.status === 'CURRENT') return 'current'
   if (index < currentIndex) return 'past'
   if (season.completed || season.status === 'COMPLETED' || season.status === 'REPEATING') return 'past'

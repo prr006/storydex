@@ -31,12 +31,14 @@ import type { Franchise } from '@/lib/franchise'
 const MotionLink = motion.create(Link)
 
 function stateWord(franchise: Franchise) {
+  // Completed/next state is derived from USER-OWNED entries only
+  // (totalSeasons/completedSeasons/nextToWatch are inUserList-based).
   if (franchise.completedSeasons === franchise.totalSeasons && franchise.totalSeasons > 0) {
     return { label: 'complete', tone: 'done' as const }
   }
   const next = franchise.nextToWatch
   if (next) return { label: `now — ${next.name}`, tone: 'live' as const }
-  if (franchise.seasons.some((s) => s.status === 'PLANNING')) {
+  if (franchise.seasons.some((s) => s.inUserList && s.status === 'PLANNING')) {
     return { label: 'planned', tone: 'quiet' as const }
   }
   return { label: 'unstarted', tone: 'quiet' as const }
@@ -61,11 +63,10 @@ export default function Dashboard() {
   const reelStories = useMemo(() => buildReelStories(viewSource), [viewSource])
 
   const stats = useMemo(() => {
-    const totalEntries = viewSource.reduce((count, franchise) => count + franchise.seasons.length, 0)
-    const completedEntries = viewSource.reduce(
-      (count, franchise) => count + franchise.seasons.filter((season) => season.completed).length,
-      0,
-    )
+    // "entries" = the user's own entries in the current view (discovered
+    // route entries are part of the map, not the user's record).
+    const totalEntries = viewSource.reduce((count, franchise) => count + franchise.totalSeasons, 0)
+    const completedEntries = viewSource.reduce((count, franchise) => count + franchise.completedSeasons, 0)
     return {
       totalEntries,
       completedEntries,
@@ -193,13 +194,15 @@ export default function Dashboard() {
                               <span
                                 key={season.id}
                                 className={`glyph__dot ${
-                                  pos.complete
-                                    ? 'glyph__dot--past'
-                                    : i < pos.pos
+                                  !season.inUserList
+                                    ? 'glyph__dot--future'
+                                    : pos.complete
                                       ? 'glyph__dot--past'
-                                      : i === pos.pos && !pos.complete
-                                        ? 'glyph__dot--current'
-                                        : 'glyph__dot--future'
+                                      : i < pos.pos
+                                        ? 'glyph__dot--past'
+                                        : i === pos.pos && !pos.complete
+                                          ? 'glyph__dot--current'
+                                          : 'glyph__dot--future'
                                 }`}
                                 style={{ left: `${pos.total > 1 ? (i / (pos.total - 1)) * 100 : 0}%` }}
                               />
@@ -207,7 +210,9 @@ export default function Dashboard() {
                           </span>
                         </span>
                         <span className="idx__count">
-                          {franchise.completedSeasons}/{franchise.totalSeasons}
+                          {franchise.totalSeasons === 0
+                            ? '—'
+                            : `${franchise.completedSeasons}/${franchise.totalSeasons}`}
                         </span>
                         <span className="idx__year">{firstYear || '—'}</span>
                         <ArrowUpRight className="idx__arrow" aria-hidden="true" />

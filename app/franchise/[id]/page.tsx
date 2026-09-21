@@ -260,8 +260,11 @@ export default function FranchiseDetail({ params }: PageProps) {
     const years = franchise.seasons.map((season) => season.year).filter(Boolean)
     // Media-aware: the route's distance is measured in each entry's native
     // units — episodes, chapters or volumes — never "episodes" for manga.
-    const totalUnits = franchise.seasons.reduce((sum, season) => sum + seasonTotal(season), 0)
-    const loggedUnits = franchise.seasons.reduce((sum, season) => {
+    // Progress is recorded over USER-OWNED entries only; discovered route
+    // entries are available, not watched.
+    const ownedSeasons = franchise.seasons.filter((season) => season.inUserList)
+    const totalUnits = ownedSeasons.reduce((sum, season) => sum + seasonTotal(season), 0)
+    const loggedUnits = ownedSeasons.reduce((sum, season) => {
       if (season.completed) return sum + seasonTotal(season)
       return sum + Math.min(season.progress || 0, seasonTotal(season))
     }, 0)

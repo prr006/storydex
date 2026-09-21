@@ -89,9 +89,9 @@ function matchesFilter(franchise: Franchise, filter: FilterChip): boolean {
     case 'completed':
       return totalSeasons > 0 && completedSeasons === totalSeasons
     case 'watching':
-      return seasons.some((s) => s.status === 'CURRENT')
+      return seasons.some((s) => s.inUserList && s.status === 'CURRENT')
     case 'planning':
-      return seasons.some((s) => s.status === 'PLANNING')
+      return seasons.some((s) => s.inUserList && s.status === 'PLANNING')
     case 'movies':
       return seasons.some((s) => s.format === 'MOVIE')
     case 'tv':
@@ -117,12 +117,14 @@ function sortFranchises(list: Franchise[], sort: SortOption): Franchise[] {
       case 'za':
         return b.name.localeCompare(a.name)
       case 'most-seasons':
-        return b.totalSeasons - a.totalSeasons || a.name.localeCompare(b.name)
+        // Story size = the whole franchise route (user + discovered).
+        return b.seasons.length - a.seasons.length || a.name.localeCompare(b.name)
       case 'most-progress': {
         // Media-aware: sums each story's native size (episodes, chapters or
-        // volumes) so manga-heavy libraries sort sensibly too.
+        // volumes) over USER-OWNED entries only, so manga-heavy libraries
+        // sort sensibly too and discovered entries never count as progress.
         const sizeOf = (f: Franchise) =>
-          f.seasons.reduce((sum, s) => sum + seasonTotal(s), 0)
+          f.seasons.filter((s) => s.inUserList).reduce((sum, s) => sum + seasonTotal(s), 0)
         const pA = sizeOf(a)
         const pB = sizeOf(b)
         return pB - pA || a.name.localeCompare(b.name)
