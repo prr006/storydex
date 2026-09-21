@@ -1,6 +1,6 @@
 'use client'
 
-import type { Franchise, Season } from './franchise'
+import { canonicalizeFranchises, type Franchise, type Season } from './franchise'
 
 // No auth, no Supabase, no database — the imported library just lives in the
 // browser's localStorage so it survives navigation between the dashboard and
@@ -90,13 +90,39 @@ function withProvenance(library: StoredLibrary): StoredLibrary {
   }
 }
 
+/**
+ * Hydration normalization: a stored library is brought to canonical form on
+ * EVERY load — provenance backfilled, and franchises that share any AniList
+ * media id (duplicates produced by pre-canonical-merge versions, where the
+ * same story could be stored once per import root) merged into ONE franchise
+ * with identity re-derived from user-owned seasons. If normalization changed
+ * anything, the canonical library is persisted immediately, so the stored
+ * data itself — not just the rendered view — contains one franchise per
+ * story. No manual storage clearing required.
+ */
+function normalizeLibrary(library: StoredLibrary, rawJSON: string): StoredLibrary {
+  const normalized: StoredLibrary = {
+    ...library,
+    franchises: canonicalizeFranchises(withProvenance(library).franchises),
+  }
+  const normalizedJSON = JSON.stringify(normalized)
+  if (normalizedJSON !== rawJSON) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, normalizedJSON)
+    } catch {
+      // Storage full/blocked — the normalized copy is still returned.
+    }
+  }
+  return normalized
+}
+
 export function loadLibrary(): StoredLibrary | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      return isValidLibrary(parsed) ? withProvenance(parsed) : null
+      return isValidLibrary(parsed) ? normalizeLibrary(parsed, raw) : null
     }
   } catch {
     return null
@@ -111,7 +137,7 @@ export function loadLibrary(): StoredLibrary | null {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
       window.localStorage.removeItem(LEGACY_KEY)
     }
-    return migrated ? withProvenance(migrated) : null
+    return migrated ? normalizeLibrary(migrated, JSON.stringify(migrated)) : null
   } catch {
     return null
   }

@@ -599,6 +599,196 @@ export function groupFranchises(
 }
 
 // ---------------------------------------------------------------------------
+// Canonical franchise merging
+// ---------------------------------------------------------------------------
+// Franchise identity must NEVER depend on whichever entry happened to be the
+// initial import/BFS root. Two franchise objects that share even ONE AniList
+// media id are the same story and are merged into one, regardless of which
+// entry seeded each of them. The merged franchise's identity is re-derived
+// from its OWN seasons (earliest user entry wins, discovered entries can
+// never define it), and provenance is preserved per season:
+//   - user-listed stays user-listed (real AniList status/progress kept);
+//   - discovered stays discovered;
+//   - a discovered entry the user explicitly imports is promoted to user,
+//     and NEVER creates a second franchise.
+
+/** Status priority used when two USER copies of the same media disagree —
+ *  same rule as groupFranchises' input dedup: the more informative wins. */
+const MERGE_STATUS_PRIORITY: Record<string, number> = {
+  COMPLETED: 6,
+  REPEATING: 5,
+  CURRENT: 4,
+  PAUSED: 3,
+  DROPPED: 2,
+  PLANNING: 1,
+  NOT_IN_LIST: 0,
+}
+
+function mergeSeason(existing: Season | undefined, incoming: Season): Season {
+  if (!existing) return incoming
+  if (existing.inUserList) {
+    if (!incoming.inUserList) return existing // user-owned beats discovered
+    // Both user copies of the same work: keep the more informative status.
+    const ePriority = MERGE_STATUS_PRIORITY[existing.status ?? ''] ?? 0
+    const iPriority = MERGE_STATUS_PRIORITY[incoming.status ?? ''] ?? 0
+    return iPriority > ePriority ? incoming : existing
+  }
+  // Existing discovered; incoming user → promotion. Incoming discovered →
+  // keep existing (first stored copy wins).
+  return incoming.inUserList ? incoming : existing
+}
+
+const seasonSortKey = (s: Season) => ({
+  year: Number.isFinite(s.year) ? s.year : Infinity,
+  aniListId: s.aniListId ?? Number.parseInt(s.id, 10) ?? 0,
+})
+
+function compareSeasons(a: Season, b: Season): number {
+  const ka = seasonSortKey(a)
+  const kb = seasonSortKey(b)
+  if (ka.year !== kb.year) return ka.year - kb.year
+  if (ka.aniListId !== kb.aniListId) return ka.aniListId - kb.aniListId
+  return a.id.localeCompare(b.id)
+}
+
+/**
+ * Re-derives a franchise's canonical identity from its merged seasons:
+ * primary = earliest USER season (a discovered prequel can never rename or
+ * re-anchor the story); with no user seasons at all, the earliest season.
+ * Counts and next-to-watch are recomputed over user-owned seasons only.
+ */
+function deriveFranchiseIdentity(donors: Franchise[], seasons: Season[]): Franchise {
+  const sorted = [...seasons].sort(compareSeasons)
+  const userSeasons = sorted.filter((s) => s.inUserList)
+  const primary = userSeasons[0] ?? sorted[0]
+  // Donor for fields that only exist at franchise level (description,
+  // genres, banner) AND for the display name: the combined franchise whose
+  // id matches the canonical primary wins; else the first combined
+  // franchise. The NAME is never re-derived from season data — it stays the
+  // exact title string AniList returned and that was stored at group time.
+  const donor =
+    (primary ? donors.find((f) => f.id === primary.id) : undefined) ??
+    donors.find((f) => primary && f.seasons.some((s) => s.id === primary.id)) ??
+    donors[0]
+
+  return {
+    ...donor,
+    id: primary ? primary.id : donor.id,
+    name: donor.name,
+    posterUrl: primary?.posterUrl || donor.posterUrl,
+    bannerUrl: donor.bannerUrl ?? null,
+    totalSeasons: userSeasons.length,
+    completedSeasons: userSeasons.filter((s) => s.completed).length,
+    genres: donor.genres ?? [],
+    description: donor.description || 'No description available.',
+    seasons: sorted,
+    aniListId: primary?.aniListId ?? donor.aniListId,
+    nextToWatch: userSeasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
+  }
+}
+
+/**
+ * Merges franchise objects into canonical form. Two franchises sharing ANY
+ * AniList media id (via season ids) are the same story and are combined —
+ * transitively, through shared-id chains — into ONE franchise whose id/name
+ * come from the earliest user season, never from the import order.
+ *
+ * Used by:
+ * - "Find a story" imports (merge additions into the stored library);
+ * - whole-list imports (canonicalize the freshly grouped result);
+ * - storage hydration (normalize legacy libraries that predate canonical
+ *   merging and may contain duplicate graphs).
+ */
+export function mergeFranchises(existing: Franchise[], additions: Franchise[]): Franchise[] {
+  const seasonIdsOf = (franchise: Franchise) => new Set(franchise.seasons.map((season) => season.id))
+
+  const merged: Franchise[] = [...existing]
+  const mergedIds: Set<string>[] = merged.map(seasonIdsOf)
+  // Union-find over positions in `merged` so franchises linked through a
+  // chain of shared ids all collapse into one canonical franchise.
+  const parent = merged.map((_, i) => i)
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]]
+      i = parent[i]
+    }
+    return i
+  }
+  const union = (a: number, b: number) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent[ra] = rb
+  }
+
+  const overlap = (a: Set<string>, b: Set<string>) => {
+    const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+    for (const id of small) if (large.has(id)) return true
+    return false
+  }
+
+  for (const addition of additions) {
+    const additionIds = seasonIdsOf(addition)
+    // Collect every already-merged franchise that shares an AniList media
+    // id with this addition (identity may differ because each import pins
+    // its id to its own earliest user entry).
+    const targets: number[] = []
+    for (let i = 0; i < merged.length; i++) {
+      if (overlap(mergedIds[i], additionIds)) targets.push(i)
+    }
+
+    if (targets.length === 0) {
+      merged.push(addition)
+      mergedIds.push(additionIds)
+      parent.push(merged.length - 1)
+      continue
+    }
+
+    // Combine the addition with ALL overlapping franchises (and anything
+    // they are transitively linked to).
+    for (let t = 1; t < targets.length; t++) union(targets[0], targets[t])
+    const root = find(targets[0])
+
+    const combinedSources: Franchise[] = []
+    const seasonById = new Map<string, Season>()
+    const takeIn = (franchise: Franchise) => {
+      combinedSources.push(franchise)
+      for (const season of franchise.seasons) {
+        seasonById.set(season.id, mergeSeason(seasonById.get(season.id), season))
+      }
+    }
+    for (let i = 0; i < merged.length; i++) {
+      if (find(i) === root) takeIn(merged[i])
+    }
+    takeIn(addition)
+
+    const canonical = deriveFranchiseIdentity(combinedSources, Array.from(seasonById.values()))
+    merged[root] = canonical
+    mergedIds[root] = seasonIdsOf(canonical)
+  }
+
+  // Collapse any groups unioned through chains (keep first-seen order).
+  const out: Franchise[] = []
+  const seenRoots = new Set<number>()
+  for (let i = 0; i < merged.length; i++) {
+    const root = find(i)
+    if (seenRoots.has(root)) continue
+    seenRoots.add(root)
+    out.push(merged[root])
+  }
+  return out
+}
+
+/**
+ * Normalizes a stored library to canonical form: franchises sharing any
+ * AniList media id become ONE franchise (identity re-derived from user
+ * seasons, provenance preserved per season). A no-op for libraries that
+ * are already canonical — same order, same ids, same bytes.
+ */
+export function canonicalizeFranchises(franchises: Franchise[]): Franchise[] {
+  return mergeFranchises([], franchises)
+}
+
+// ---------------------------------------------------------------------------
 // Media-scope presentation views (ALL / ANIME / MANGA)
 // ---------------------------------------------------------------------------
 // The dashboard's Anime/Manga filter is a PRESENTATION concern, not a data

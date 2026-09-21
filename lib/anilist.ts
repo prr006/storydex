@@ -5,7 +5,6 @@
 // every list/query must say which type it means. Manga formats include
 // MANGA, NOVEL and ONE_SHOT. We never assume type: ANIME retrieves "everything".
 
-import type { Franchise } from './franchise'
 
 const ANILIST_API_URL = 'https://graphql.anilist.co'
 
@@ -506,80 +505,4 @@ export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
     progressVolumes: 0,
     media: m,
   }))
-}
-
-/**
- * Merges newly imported franchises into an existing stored library
- * (single-story "Find a story" flow). New franchises are appended; a
- * franchise that already exists is merged PER SEASON by AniList id:
- * - seasons already in the library keep their recorded data;
- * - a season previously DISCOVERED (inUserList=false) that the user now
- *   explicitly imported becomes inUserList=true with the fresh entry data —
- *   explicit selection is the only thing that grants provenance;
- * - newly discovered seasons are added as inUserList=false.
- *
- * Whole-profile imports do NOT use this — they replace the stored library.
- */
-export function mergeFranchises(existing: Franchise[], additions: Franchise[]): Franchise[] {
-  const merged = [...existing]
-  const indexById = new Map(merged.map((f, i) => [f.id, i]))
-  const seasonIdsOf = (franchise: Franchise) => new Set(franchise.seasons.map((season) => season.id))
-
-  for (const addition of additions) {
-    let idx = indexById.get(addition.id)
-    if (idx === undefined) {
-      // Same-story detection: franchise ids are pinned to each import's
-      // primary user entry, so two imports of the SAME story can carry
-      // different ids. Sharing even one AniList media id means the same
-      // story (AniList ids are unique per work) — merge, don't duplicate.
-      const addSeasonIds = seasonIdsOf(addition)
-      for (let i = 0; i < merged.length; i++) {
-        const currentIds = seasonIdsOf(merged[i])
-        let overlaps = false
-        for (const sid of addSeasonIds) {
-          if (currentIds.has(sid)) { overlaps = true; break }
-        }
-        if (overlaps) { idx = i; break }
-      }
-    }
-    if (idx === undefined) {
-      merged.push(addition)
-      indexById.set(addition.id, merged.length - 1)
-      continue
-    }
-    const current = merged[idx]
-    const bySeasonId = new Map(current.seasons.map((season, i) => [season.id, i]))
-    const seasons = [...current.seasons]
-    let changed = false
-
-    for (const incoming of addition.seasons) {
-      const prevIdx = bySeasonId.get(incoming.id)
-      if (prevIdx === undefined) {
-        seasons.push(incoming)
-        bySeasonId.set(incoming.id, seasons.length - 1)
-        changed = true
-      } else if (!seasons[prevIdx].inUserList && incoming.inUserList) {
-        // Explicit user import promotes a discovered entry; everything else
-        // (poster, totals) comes from the fresh entry — the media is the
-        // same AniList work.
-        seasons[prevIdx] = { ...incoming, inUserList: true }
-        changed = true
-      }
-    }
-
-    if (!changed) continue
-
-    // Keep the existing franchise's identity (its primary is a user entry)
-    // and re-derive the user-owned fields from the merged seasons.
-    const userSeasons = seasons.filter((season) => season.inUserList)
-    merged[idx] = {
-      ...current,
-      seasons,
-      totalSeasons: userSeasons.length,
-      completedSeasons: userSeasons.filter((season) => season.completed).length,
-      nextToWatch: userSeasons.find((season) => !season.completed && season.status !== 'DROPPED') || null,
-    }
-  }
-
-  return merged
 }

@@ -10,12 +10,16 @@ import {
   searchAniList,
   searchAniListAll,
   entriesFromMedia,
-  mergeFranchises,
   AniListError,
   type AniListSearchResult,
   type MediaType,
 } from '@/lib/anilist'
-import { groupFranchises, expandFranchises } from '@/lib/franchise'
+import {
+  groupFranchises,
+  expandFranchises,
+  mergeFranchises,
+  canonicalizeFranchises,
+} from '@/lib/franchise'
 import { loadLibrary, saveLibrary } from '@/lib/storage'
 
 interface ImportDialogProps {
@@ -177,7 +181,10 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       const discovered = await expandFranchises(entries)
       const imported = groupFranchises(entries, discovered)
       const stored = loadLibrary()
-      const merged = mergeFranchises(stored?.franchises ?? [], imported)
+      // Canonical merge: franchises sharing ANY AniList media id become one
+      // franchise (identity re-derived from user seasons; a promoted entry
+      // never spawns a second franchise).
+      const merged = canonicalizeFranchises(mergeFranchises(stored?.franchises ?? [], imported))
       saveLibrary(stored?.username ?? '', merged)
       resetAll()
       onClose()
@@ -215,7 +222,9 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       // on the entries they actually own.
       const allEntries = [...result.anime, ...result.manga]
       const discovered = await expandFranchises(allEntries)
-      const franchises = groupFranchises(allEntries, discovered)
+      // Canonical form before saving: the stored library itself must contain
+      // ONE franchise per story graph, never two objects sharing media ids.
+      const franchises = canonicalizeFranchises(groupFranchises(allEntries, discovered))
       // Whole-list import = this profile IS the library: it replaces any
       // previously stored one, and the imported username becomes the
       // stored identity.
