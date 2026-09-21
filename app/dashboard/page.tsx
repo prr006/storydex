@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
-  ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Check,
@@ -19,7 +18,6 @@ import { ImportDialog } from '@/components/ImportDialog'
 import { FirstRun } from '@/components/FirstRun'
 import { StoryReel, buildReelStories } from '@/components/StoryReel'
 import { WordReveal } from '@/components/Reveal'
-import { Beacon } from '@/components/Beacon'
 import { storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
@@ -56,9 +54,10 @@ export default function Dashboard() {
   const viewSource = filtered.length > 0 ? filtered : scoped
 
   /* The reel follows the current index view (sorted/filtered) so the hero and
-     the table of contents always agree. When the view is empty (a search that
-     matches nothing), the hero falls back to the whole scoped library — it
-     never disappears, and the index shows its own "no matches" state below. */
+     the table of contents always agree. When a search matches nothing, the
+     hero falls back to the whole scoped library. When the active media
+     filter excludes every franchise, the reel is simply absent — the index
+     below shows its "no matches" state (never a fake empty-library screen). */
   const reelStories = useMemo(() => buildReelStories(viewSource), [viewSource])
 
   const stats = useMemo(() => {
@@ -92,10 +91,11 @@ export default function Dashboard() {
         ) : !isImported ? (
           /* genuinely empty — the first page */
           <FirstRun onImportClick={() => setIsImportOpen(true)} />
-        ) : reelStories.length > 0 ? (
+        ) : (
           <>
-            {/* ═══ THE WORLD — the featured stories, rotating ══════════ */}
-            <StoryReel stories={reelStories} />
+            {/* ═══ THE WORLD — the featured stories, rotating (hidden only
+                when the active filter excludes every franchise) ═══════ */}
+            {reelStories.length > 0 && <StoryReel stories={reelStories} />}
 
             {/* ═══ THE INDEX — the whole library as a table of contents ══ */}
             <section className="index" id="stories" aria-labelledby="index-title">
@@ -230,36 +230,6 @@ export default function Dashboard() {
               )}
             </section>
           </>
-        ) : (
-          /* imported, but nothing matches the current view */
-          <section className="void">
-            <div className="void__rose" aria-hidden="true">
-              <div className="tp__ring" />
-              <div className="tp__ring tp__ring--2" />
-              <div className="tp__ring tp__ring--3" />
-              <div className="tp__cross-h" />
-              <div className="tp__cross-v" />
-              <span className="tp__beacon"><Beacon /></span>
-            </div>
-            <span className="label">
-              <i className="label__dot label__dot--live" aria-hidden="true" /> No route selected
-            </span>
-            <h1>
-              Your stories are waiting<br />to become a <em>map.</em>
-            </h1>
-            <p>
-              Import your public AniList library and StoryDex will find the connections
-              between every story you follow and the places you have already been.
-            </p>
-            <button className="cta" onClick={() => setIsImportOpen(true)} type="button">
-              Import from AniList <ArrowDown aria-hidden="true" />
-            </button>
-            <div className="void__marks">
-              <span><Check aria-hidden="true" /> grouped by story</span>
-              <span><Check aria-hidden="true" /> stored locally</span>
-              <span><Check aria-hidden="true" /> no account needed</span>
-            </div>
-          </section>
         )}
       </main>
 

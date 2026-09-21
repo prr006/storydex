@@ -113,7 +113,6 @@ export interface AniListListEntry {
    */
   progressVolumes: number
   media: AniListMedia
-  isExpanded?: boolean
 }
 
 export interface AniListSearchResult {
@@ -492,9 +491,11 @@ export async function searchAniListAll(
 }
 
 /**
- * Wraps selected media as library entries so they flow through the same
- * expansion + grouping pipeline as a profile import. New entries are marked
- * CURRENT with no progress, which anchors "you are here" at the start.
+ * Wraps the EXACT media the user selected ("Find a story") as library
+ * entries so they flow through the same grouping pipeline as a profile
+ * import. Only the given media become entries — nothing related is fetched
+ * or added. New entries are marked CURRENT with no progress, which anchors
+ * "you are here" at the start.
  */
 export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
   return media.map((m) => ({
@@ -504,7 +505,6 @@ export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
     progress: 0,
     progressVolumes: 0,
     media: m,
-    isExpanded: true,
   }))
 }
 

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { X, AlertCircle, Loader2 } from 'lucide-react'
 import { fetchAniListLibrary, AniListError } from '@/lib/anilist'
-import { groupFranchises, expandFranchises } from '@/lib/franchise'
+import { groupFranchises } from '@/lib/franchise'
 import { saveLibrary } from '@/lib/storage'
 
 interface ImportDialogProps {
@@ -28,8 +28,8 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
 
     try {
       const result = await fetchAniListLibrary(username)
-      const expandedEntries = await expandFranchises([...result.anime, ...result.manga])
-      const franchises = groupFranchises(expandedEntries)
+      // Relations only GROUP the user's own entries — they never add media.
+      const franchises = groupFranchises([...result.anime, ...result.manga])
       saveLibrary(username.trim(), franchises)
       setUsername('')
       onClose()

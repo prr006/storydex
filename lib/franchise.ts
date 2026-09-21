@@ -1,10 +1,13 @@
-import { fetchMediaByIds, type AniListListEntry, type AniListMedia, type AniListRelationType, type AniListRelationEdge, type MediaType } from './anilist'
+import { type AniListListEntry, type AniListMedia, type AniListRelationType, type MediaType } from './anilist'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-// Kept intentionally close to the original mock data shape so every existing
-// component (FranchiseCard, franchise detail page) keeps working unmodified.
+// The data model below is a PROJECTION over the user's own AniList entries.
+// A season exists here ONLY if the user listed it on AniList or explicitly
+// selected it via "Find a story". Nothing in this module fetches, invents or
+// supplements media beyond the entries it is given.
+
 
 export interface Season {
   id: string
@@ -34,7 +37,6 @@ export interface Season {
   aniListId?: number
   posterUrl?: string
   siteUrl?: string | null
-  isExpanded?: boolean
   airingStatus?: string | null
 }
 
@@ -186,6 +188,16 @@ export function normalizeTitle(rawTitle: string): string {
   return value
 }
 
+/**
+ * Title-integrity contract: the displayed title is ALWAYS the exact string
+ * AniList returned — never AI-generated, fuzzy-corrected, guessed or
+ * mutated. The preference order is deterministic and fixed:
+ *   1. title.english   (official English title, when AniList has one)
+ * 2. title.romaji
+ * 3. title.native
+ * 4. "Untitled"        (only when AniList returned no title at all)
+ * Example: english = "Dragon Ball" → displayed "Dragon Ball". Always.
+ */
 function preferredTitle(title: AniListMedia['title']): string {
   return title.english || title.romaji || title.native || 'Untitled'
 }
@@ -224,8 +236,18 @@ class DisjointSet {
 }
 
 /**
- * Groups a user's flat AniList entries (anime and manga) into
- * franchises ("stories").
+ * Groups the user's flat AniList entries (anime and manga) into franchises
+ * ("stories").
+ *
+ * SOURCE OF TRUTH: the input entries are the user's actual AniList MediaList
+ * entries (or media explicitly selected via "Find a story"). This function is
+ * a PROJECTION over that set — it only decides which of the user's OWN
+ * entries belong together. Relations and title matching are metadata for
+ * grouping; they can never add media the user did not list or select:
+ *   - Pass 1 unions two entries only when BOTH endpoints are in the user's
+ *     list (an edge pointing at unlisted media is ignored).
+ *   - Pass 2 (normalized-title fallback) matches only within the user's
+ *     entries as well.
  *
  * Strategy:
  * 1. Connect entries that reference each other via a "same story" relation
@@ -238,57 +260,6 @@ class DisjointSet {
  *    earliest entry (by release year, then AniList id) as the "primary"
  *    entry for name/poster/banner/description.
  */
-/**
- * Expands a user's library by fetching missing media in their franchises.
- */
-export async function expandFranchises(entries: AniListListEntry[]): Promise<AniListListEntry[]> {
-  const expandedEntries = [...entries]
-  const visitedIds = new Set<number>(entries.map((e) => e.media.id))
-  // Queued ids each carry their AniList media type — manga ids must never be
-  // fetched through a type: ANIME query (and vice versa).
-  let queued = new Map<number, MediaType>()
-
-  const queueEdge = (edges: AniListRelationEdge[] | undefined) => {
-    for (const edge of edges ?? []) {
-      if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
-      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
-      if (!visitedIds.has(edge.node.id)) queued.set(edge.node.id, edge.node.type)
-    }
-  }
-
-  for (const entry of entries) {
-    queueEdge(entry.media.relations?.edges)
-  }
-
-  while (queued.size > 0) {
-    const byType = new Map<MediaType, number[]>()
-    for (const [id, type] of queued) {
-      visitedIds.add(id)
-      const list = byType.get(type) ?? []
-      list.push(id)
-      byType.set(type, list)
-    }
-    queued = new Map()
-
-    for (const [type, ids] of byType) {
-      const fetchedMedia = await fetchMediaByIds(ids, type)
-      for (const media of fetchedMedia) {
-        expandedEntries.push({
-          id: 0, // Mock ID for list entry
-          score: 0,
-          progress: 0,
-          progressVolumes: 0,
-          media,
-          isExpanded: true,
-        })
-        queueEdge(media.relations?.edges)
-      }
-    }
-  }
-
-  return expandedEntries
-}
-
 export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
   // ── Pass 0: deduplicate input by AniList media ID ────────────────────────
   // AniList's API can return the same media.id in multiple lists
@@ -432,7 +403,6 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
         aniListId: entry.media.id,
         posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
         siteUrl: entry.media.siteUrl,
-        isExpanded: entry.isExpanded,
         airingStatus: entry.media.status?.status ?? null,
       }
     })
