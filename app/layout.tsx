@@ -5,7 +5,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'StoryDex',
-  description: 'A map for the stories you carry. Track anime franchises as routes through time.',
+  description:
+    'A map for the stories you carry. Track anime, manga, novels and one-shots as routes through time — powered by AniList.',
   icons: {
     icon: [
       {

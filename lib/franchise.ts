@@ -1,4 +1,4 @@
-import { fetchMediaByIds, type AniListListEntry, type AniListMedia, type AniListRelationType } from './anilist'
+import { fetchMediaByIds, type AniListListEntry, type AniListMedia, type AniListRelationType, type AniListRelationEdge, type MediaType } from './anilist'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -9,22 +9,109 @@ import { fetchMediaByIds, type AniListListEntry, type AniListMedia, type AniList
 export interface Season {
   id: string
   name: string
-  episodes: number
+  /** Which AniList media type this entry is. Always known for new imports;
+   *  legacy (v1) stored entries default to ANIME. */
+  mediaType: MediaType
   year: number
   completed: boolean
   /** Raw AniList list status for this entry (CURRENT, COMPLETED, DROPPED, ...) */
   status?: string
-  /** Format of this entry (TV, MOVIE, OVA, ...) */
+  /** Format of this entry (TV, MOVIE, OVA, MANGA, NOVEL, ONE_SHOT, ...) */
   format?: string
   /** User's score for this entry, 0 if unscored */
   score?: number
-  /** Episodes watched so far */
+  /** Total episodes — anime entries only. */
+  episodes?: number
+  /** Total chapters — manga entries only. Never masquerades as episodes. */
+  chapters?: number
+  /** Total volumes — novel entries only. */
+  volumes?: number
+  /**
+   * Progress in the entry's native unit:
+   * episodes watched (anime) / chapters read (manga) / volumes read (novel).
+   */
   progress?: number
   aniListId?: number
   posterUrl?: string
   siteUrl?: string | null
   isExpanded?: boolean
   airingStatus?: string | null
+}
+
+/** The entry's total count in its native unit (0 for films / one-shots). */
+export function seasonTotal(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes'>): number {
+  if (season.mediaType === 'MANGA') {
+    if (season.format === 'NOVEL') return season.volumes ?? 0
+    if (season.format === 'ONE_SHOT') return 0
+    return season.chapters ?? 0
+  }
+  if (season.format === 'MOVIE') return 1
+  return season.episodes ?? 0
+}
+
+/** Short progress unit for this entry: EP / CH / VOL, or null (film, one-shot). */
+export function unitShort(season: Pick<Season, 'mediaType' | 'format'>): 'EP' | 'CH' | 'VOL' | null {
+  if (season.mediaType === 'MANGA') {
+    if (season.format === 'NOVEL') return 'VOL'
+    if (season.format === 'ONE_SHOT') return null
+    return 'CH'
+  }
+  if (season.format === 'MOVIE') return null
+  return 'EP'
+}
+
+/** Long human word for the entry's unit: episodes / chapters / volumes / film / one shot. */
+export function unitLong(season: Pick<Season, 'mediaType' | 'format'>): string {
+  const unit = unitShort(season)
+  if (unit === 'CH') return 'chapters'
+  if (unit === 'VOL') return 'volumes'
+  if (unit === 'EP') return 'episodes'
+  if (season.mediaType === 'MANGA') return season.format === 'NOVEL' ? 'volumes' : 'one shot'
+  return 'film'
+}
+
+/** "24 episodes" · "120 chapters" · "12 volumes" · "film" · "one shot" */
+export function totalLabel(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes'>): string {
+  const unit = unitShort(season)
+  if (season.mediaType === 'MANGA' && season.format === 'ONE_SHOT') return 'one shot'
+  if (unit === null) return season.mediaType === 'MANGA' ? 'one shot' : 'film'
+  const total = seasonTotal(season)
+  if (total <= 0) return unitLong(season)
+  return `${total} ${unitLong(season)}`
+}
+
+/** "24 ep" · "120 ch" · "12 vol" · "film" · "one shot" */
+export function totalShort(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes'>): string {
+  const unit = unitShort(season)
+  if (season.mediaType === 'MANGA' && season.format === 'ONE_SHOT') return 'one shot'
+  if (unit === null) return season.mediaType === 'MANGA' ? 'one shot' : 'film'
+  const total = seasonTotal(season)
+  if (total <= 0) return unitLong(season)
+  return `${total} ${unit.toLowerCase()}`
+}
+
+/** "EP 12 / 24" · "CH 42 / 120" · "VOL 3 / 12" · "—" (no numbered progress) */
+export function progressLabel(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes' | 'progress'>): string {
+  const unit = unitShort(season)
+  if (!unit) return '—'
+  const total = seasonTotal(season)
+  if (total <= 0) return '—'
+  const done = Math.min(season.progress ?? 0, total)
+  return `${unit} ${done} / ${total}`
+}
+
+/** The next numbered position for a resume CTA, or null for films / one-shots. */
+export function resumePosition(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes' | 'progress'>): number | null {
+  const total = seasonTotal(season)
+  if (total <= 1 || !unitShort(season)) return null
+  return Math.min((season.progress ?? 0) + 1, total)
+}
+
+/** "Resume EP 12" · "Resume CH 42" · "Resume VOL 3" · "Resume" */
+export function resumeLabel(season: Pick<Season, 'mediaType' | 'format' | 'episodes' | 'chapters' | 'volumes' | 'progress'>): string {
+  const pos = resumePosition(season)
+  if (pos === null) return 'Resume'
+  return `Resume ${unitShort(season)} ${pos}`
 }
 
 export interface Franchise {
@@ -137,7 +224,8 @@ class DisjointSet {
 }
 
 /**
- * Groups a user's flat AniList anime entries into franchises ("stories").
+ * Groups a user's flat AniList entries (anime and manga) into
+ * franchises ("stories").
  *
  * Strategy:
  * 1. Connect entries that reference each other via a "same story" relation
@@ -156,43 +244,43 @@ class DisjointSet {
 export async function expandFranchises(entries: AniListListEntry[]): Promise<AniListListEntry[]> {
   const expandedEntries = [...entries]
   const visitedIds = new Set<number>(entries.map((e) => e.media.id))
-  let queuedIds = new Set<number>()
+  // Queued ids each carry their AniList media type — manga ids must never be
+  // fetched through a type: ANIME query (and vice versa).
+  let queued = new Map<number, MediaType>()
 
-  for (const entry of entries) {
-    const edges = entry.media.relations?.edges ?? []
-    for (const edge of edges) {
-      if (!FRANCHISE_RELATIONS.has(edge.relationType) || edge.node.type !== 'ANIME') continue
-      if (!visitedIds.has(edge.node.id)) {
-        queuedIds.add(edge.node.id)
-      }
+  const queueEdge = (edges: AniListRelationEdge[] | undefined) => {
+    for (const edge of edges ?? []) {
+      if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
+      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
+      if (!visitedIds.has(edge.node.id)) queued.set(edge.node.id, edge.node.type)
     }
   }
 
-  while (queuedIds.size > 0) {
-    const idsToFetch = Array.from(queuedIds)
-    queuedIds = new Set<number>()
+  for (const entry of entries) {
+    queueEdge(entry.media.relations?.edges)
+  }
 
-    for (const id of idsToFetch) {
+  while (queued.size > 0) {
+    const byType = new Map<MediaType, number[]>()
+    for (const [id, type] of queued) {
       visitedIds.add(id)
+      const list = byType.get(type) ?? []
+      list.push(id)
+      byType.set(type, list)
     }
+    queued = new Map()
 
-    const fetchedMedia = await fetchMediaByIds(idsToFetch)
-
-    for (const media of fetchedMedia) {
-      expandedEntries.push({
-        id: 0, // Mock ID for list entry
-        score: 0,
-        progress: 0,
-        media,
-        isExpanded: true,
-      })
-
-      const edges = media.relations?.edges ?? []
-      for (const edge of edges) {
-        if (!FRANCHISE_RELATIONS.has(edge.relationType) || edge.node.type !== 'ANIME') continue
-        if (!visitedIds.has(edge.node.id)) {
-          queuedIds.add(edge.node.id)
-        }
+    for (const [type, ids] of byType) {
+      const fetchedMedia = await fetchMediaByIds(ids, type)
+      for (const media of fetchedMedia) {
+        expandedEntries.push({
+          id: 0, // Mock ID for list entry
+          score: 0,
+          progress: 0,
+          media,
+          isExpanded: true,
+        })
+        queueEdge(media.relations?.edges)
       }
     }
   }
@@ -238,26 +326,32 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
   for (const id of byId.keys()) ds.add(id)
 
   // Pass 1: relation edges between entries the user actually owns.
+  // Media-aware: ANIME↔ANIME, MANGA↔MANGA and cross-media edges all count,
+  // but ONLY for the conservative "same story" relation types — an anime
+  // adaptation of a manga (ADAPTATION/SOURCE) is deliberately NOT a merge.
   for (const entry of entries) {
     const edges = entry.media.relations?.edges ?? []
     for (const edge of edges) {
       if (!FRANCHISE_RELATIONS.has(edge.relationType)) continue
-      if (edge.node.type !== 'ANIME') continue
+      if (edge.node.type !== 'ANIME' && edge.node.type !== 'MANGA') continue
       if (!byId.has(edge.node.id)) continue // only merge within the user's own list
       ds.union(entry.media.id, edge.node.id)
     }
   }
 
-  // Pass 2: normalized-title fallback, grouped by normalized base string.
+  // Pass 2: normalized-title fallback, grouped by media type + normalized
+  // base string. The type in the key keeps a manga and its anime adaptation
+  // (same title, different medium) as two distinct stories.
   const byNormalizedTitle = new Map<string, number[]>()
   for (const entry of entries) {
     const normalized = normalizeTitle(preferredTitle(entry.media.title))
     if (normalized.length < 3) continue // too short/generic to trust
-    const bucket = byNormalizedTitle.get(normalized)
+    const key = `${entry.media.type}:${normalized}`
+    const bucket = byNormalizedTitle.get(key)
     if (bucket) {
       bucket.push(entry.media.id)
     } else {
-      byNormalizedTitle.set(normalized, [entry.media.id])
+      byNormalizedTitle.set(key, [entry.media.id])
     }
   }
   for (const ids of byNormalizedTitle.values()) {
@@ -306,21 +400,33 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
 
     const seasons: Season[] = sorted.map((entry) => {
       const completed = entry.status === 'COMPLETED' || entry.status === 'REPEATING'
+      const mediaType: MediaType = entry.media.type === 'MANGA' ? 'MANGA' : 'ANIME'
+      const format = entry.media.format ?? (mediaType === 'MANGA' ? 'MANGA' : 'TV')
       return {
         id: String(entry.media.id),
         name: preferredTitle(entry.media.title),
-        episodes: entry.media.episodes ?? entry.progress ?? 0,
+        mediaType,
         year: entry.media.seasonYear ?? entry.media.startDate?.year ?? 0,
         completed,
         status: entry.status,
-        format: entry.media.format ?? 'TV',
+        format,
         score: entry.score ?? 0,
+        // Native units only — a manga's chapters are never stored as episodes.
+        episodes: mediaType === 'ANIME' ? (entry.media.episodes ?? 0) : undefined,
+        chapters:
+          mediaType === 'MANGA' && format === 'MANGA' ? (entry.media.episodes ?? 0) : undefined,
+        volumes:
+          mediaType === 'MANGA' && format === 'NOVEL'
+            ? (entry.media.volumes ?? entry.media.episodes ?? 0)
+            : undefined,
+        // AniList's list "progress" is native per medium:
+        // episodes (anime) / chapters (manga) / volumes (novel).
         progress: entry.progress ?? 0,
         aniListId: entry.media.id,
         posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
         siteUrl: entry.media.siteUrl,
         isExpanded: entry.isExpanded,
-        airingStatus: entry.media.status,
+        airingStatus: entry.media.status?.status ?? null,
       }
     })
 

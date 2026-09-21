@@ -37,10 +37,10 @@ export function FirstRun({ onImportClick }: { onImportClick: () => void }) {
           Every story has a map.
         </h1>
         <p className="first-run__lede">
-          StoryDex reads your AniList, groups seasons and films into the stories
-          they belong to, and plots your place on each route — so you always know
-          where you stopped, and exactly where to pick it up. Nothing is imported
-          automatically. Your atlas begins when you import it.
+          StoryDex reads your AniList, groups entries — anime, manga, novels — into
+          the stories they belong to, and plots your place on each route, so you
+          always know where you stopped, and exactly where to pick it up. Nothing
+          is imported automatically. Your atlas begins when you import it.
         </p>
 
         <div className="first-run__cta">
@@ -70,8 +70,8 @@ export function FirstRun({ onImportClick }: { onImportClick: () => void }) {
           <div>
             <b>Your progress stays yours</b>
             <span>
-              Episode counts and scores come from AniList and stay with your map —
-              ready whenever you are.
+              Episode, chapter and volume counts plus your scores come from AniList
+              and stay with your map — ready whenever you are.
             </span>
           </div>
         </div>

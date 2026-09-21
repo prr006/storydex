@@ -8,6 +8,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUpRight,
+  BookOpen,
   Check,
   Film,
   MapPin,
@@ -24,7 +25,15 @@ import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
 import { storyAccentVars } from '@/lib/storyAccent'
-import { heroSummary } from '@/lib/franchise'
+import {
+  heroSummary,
+  progressLabel,
+  resumePosition,
+  seasonTotal,
+  totalLabel,
+  totalShort,
+  unitShort,
+} from '@/lib/franchise'
 import type { Franchise, Season } from '@/lib/franchise'
 
 interface PageProps {
@@ -32,11 +41,16 @@ interface PageProps {
 }
 
 function formatIcon(format?: string) {
-  return format === 'MOVIE' ? <Film aria-hidden="true" /> : <Tv aria-hidden="true" />
+  if (format === 'MOVIE') return <Film aria-hidden="true" />
+  if (format === 'MANGA' || format === 'NOVEL' || format === 'ONE_SHOT') {
+    return <BookOpen aria-hidden="true" />
+  }
+  return <Tv aria-hidden="true" />
 }
 
 function formatWord(format?: string) {
   if (format === 'MOVIE') return 'film'
+  if (format === 'ONE_SHOT') return 'one shot'
   return format?.toLowerCase() || 'tv'
 }
 
@@ -58,12 +72,14 @@ function FranchiseCover({
   years,
   originYear,
   epNow,
+  epUnit,
 }: {
   franchise: Franchise
   pos: { total: number; pos: number; fill: number; complete: boolean }
   years: string
   originYear: string
   epNow: number | null
+  epUnit: string
 }) {
   const coverRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
@@ -148,7 +164,7 @@ function FranchiseCover({
             </a>
             {next?.siteUrl && epNow && (
               <a href={next.siteUrl} target="_blank" rel="noreferrer" className="cta cta--accent">
-                Resume EP {epNow} <Play aria-hidden="true" />
+                Resume {epUnit} {epNow} <Play aria-hidden="true" />
               </a>
             )}
           </div>
@@ -204,7 +220,12 @@ function FranchiseCover({
                     <span className={`beacon__flag${pct > 82 ? ' beacon__flag--end' : ''}`}>
                       <MapPin aria-hidden="true" />
                       <b>You</b>
-                      {next && <em>{next.name}</em>}
+                      {next && (
+                        <em>
+                          {next.name}
+                          {unitShort(next) ? ` · ${progressLabel(next)}` : ''}
+                        </em>
+                      )}
                     </span>
                   }
                 />
@@ -237,10 +258,12 @@ export default function FranchiseDetail({ params }: PageProps) {
   const data = useMemo(() => {
     if (!franchise) return null
     const years = franchise.seasons.map((season) => season.year).filter(Boolean)
-    const totalEpisodes = franchise.seasons.reduce((sum, season) => sum + (season.episodes || 0), 0)
-    const completedEpisodes = franchise.seasons.reduce((sum, season) => {
-      if (season.completed) return sum + (season.episodes || 0)
-      return sum + Math.min(season.progress || 0, season.episodes || 0)
+    // Media-aware: the route's distance is measured in each entry's native
+    // units — episodes, chapters or volumes — never "episodes" for manga.
+    const totalUnits = franchise.seasons.reduce((sum, season) => sum + seasonTotal(season), 0)
+    const loggedUnits = franchise.seasons.reduce((sum, season) => {
+      if (season.completed) return sum + seasonTotal(season)
+      return sum + Math.min(season.progress || 0, seasonTotal(season))
     }, 0)
     const formats = Array.from(new Set(franchise.seasons.map((season) => season.format || 'TV')))
     const next = currentSeason(franchise)
@@ -252,8 +275,8 @@ export default function FranchiseDetail({ params }: PageProps) {
     return {
       progress: franchise.totalSeasons ? Math.round((franchise.completedSeasons / franchise.totalSeasons) * 100) : 0,
       years: years.length ? `${Math.min(...years)} — ${Math.max(...years)}` : 'undated',
-      totalEpisodes,
-      completedEpisodes,
+      totalUnits,
+      loggedUnits,
       formats,
       next,
       nextIndex: next ? franchise.seasons.findIndex((s) => s.id === next.id) : -1,
@@ -264,8 +287,8 @@ export default function FranchiseDetail({ params }: PageProps) {
       pos,
       behind: waypoints.filter((w) => w.state === 'past').length,
       horizon: remaining.length,
-      epNow: currentEntry && currentEntry.episodes > 0
-        ? Math.min((currentEntry.progress ?? 0) + 1, currentEntry.episodes) : null,
+      epNow: currentEntry ? resumePosition(currentEntry) : null,
+      epUnit: currentEntry ? (unitShort(currentEntry) ?? '') : '',
     }
   }, [franchise])
 
@@ -304,8 +327,9 @@ export default function FranchiseDetail({ params }: PageProps) {
     )
   }
 
-  const epProgress = data.currentEntry && data.currentEntry.episodes > 0
-    ? Math.min(100, ((data.currentEntry.progress ?? 0) / data.currentEntry.episodes) * 100)
+  const currentTotal = data.currentEntry ? seasonTotal(data.currentEntry) : 0
+  const epProgress = data.currentEntry && currentTotal > 0
+    ? Math.min(100, ((data.currentEntry.progress ?? 0) / currentTotal) * 100)
     : 0
   const pct = data.pos.fill * 100
   const firstYear = franchise.seasons[0]?.year
@@ -324,6 +348,7 @@ export default function FranchiseDetail({ params }: PageProps) {
           years={data.years}
           originYear={originYear}
           epNow={data.epNow}
+          epUnit={data.epUnit}
         />
 
         {/* ═══ THE GATE — next destination, full width ════════════════ */}
@@ -349,7 +374,7 @@ export default function FranchiseDetail({ params }: PageProps) {
               <span className="gate__cap">
                 Waypoint <b>{String(data.nextIndex + 1).padStart(2, '0')}</b> / {String(franchise.seasons.length).padStart(2, '0')}
                 {' — '}{formatWord(next.format)} · {next.year || 'undated'}
-                {next.episodes ? ` · ${next.episodes} ep` : ''}
+                {unitShort(next) ? ` · ${totalShort(next)}` : ''}
               </span>
               {next.siteUrl && (
                 <a
@@ -372,17 +397,19 @@ export default function FranchiseDetail({ params }: PageProps) {
                 <WordReveal text={next.name} as="span" inView emphasizeLast />
               </h2>
               <div className="gate__meta">
-                <span>{formatIcon(next.format)} {next.format || 'TV'}</span>
+                <span>{formatIcon(next.format)} {formatWord(next.format)}</span>
                 <span>{next.year || 'undated'}</span>
-                <span>{next.episodes || '?'} episodes</span>
+                <span>{totalLabel(next)}</span>
               </div>
               <div className="gate__cta">
                 {next.siteUrl ? (
                   <a href={next.siteUrl} target="_blank" rel="noreferrer" className="cta">
-                    Continue watching <ArrowUpRight aria-hidden="true" />
+                    {next.mediaType === 'MANGA' ? 'Continue reading' : 'Continue watching'} <ArrowUpRight aria-hidden="true" />
                   </a>
                 ) : (
-                  <span className="cta cta--dim" aria-disabled="true">Continue watching</span>
+                  <span className="cta cta--dim" aria-disabled="true">
+                    {next.mediaType === 'MANGA' ? 'Continue reading' : 'Continue watching'}
+                  </span>
                 )}
                 <a href="#route" className="cta cta--dim">
                   View on the route <ArrowDown aria-hidden="true" />
@@ -422,14 +449,14 @@ export default function FranchiseDetail({ params }: PageProps) {
               {data.currentEntry ? (
                 <>
                   <h2 className="here__story">{data.currentEntry.name}</h2>
-                  {data.currentEntry.episodes > 0 && (
+                  {data.epNow !== null && currentTotal > 1 && (
                     <div className="here__ep">
                       <div className="here__ep-line">
                         <span style={{ width: `${epProgress}%` }} />
                       </div>
                       <div className="here__ep-meta">
-                        <span>EP {data.epNow || 1}</span>
-                        <span>{data.currentEntry.episodes} total</span>
+                        <span>{data.epUnit} {data.epNow}</span>
+                        <span>{totalShort(data.currentEntry)} total</span>
                       </div>
                     </div>
                   )}
@@ -493,7 +520,7 @@ export default function FranchiseDetail({ params }: PageProps) {
                   <span className="distance__name">{season.name}</span>
                   <span className="distance__fill" aria-hidden="true" />
                   <span className="distance__meta">
-                    {season.year || '—'} · {season.episodes || '?'} ep
+                    {season.year || '—'} · {totalShort(season)}
                   </span>
                   {season.siteUrl && (
                     <a
@@ -544,9 +571,9 @@ export default function FranchiseDetail({ params }: PageProps) {
               <dd>{franchise.totalSeasons}</dd>
             </div>
             <div className="almanac__row">
-              <dt>Episodes logged</dt>
+              <dt>Progress logged</dt>
               <span className="fill" aria-hidden="true" />
-              <dd>{data.completedEpisodes} / {data.totalEpisodes || '—'}</dd>
+              <dd>{data.loggedUnits} / {data.totalUnits || '—'}</dd>
             </div>
             <div className="almanac__row">
               <dt>Formats</dt>

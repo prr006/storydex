@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import type { Franchise } from './franchise'
+import { seasonTotal, type Franchise } from './franchise'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,13 +11,15 @@ export type SortOption =
   | 'az'
   | 'za'
   | 'most-seasons'
-  | 'most-episodes'
+  | 'most-progress'
   | 'newest'
   | 'oldest'
   | 'completion'
 
 export type FilterChip =
   | 'all'
+  | 'anime'
+  | 'manga'
   | 'completed'
   | 'watching'
   | 'planning'
@@ -30,11 +32,13 @@ export type FilterChip =
 
 export const FILTER_CHIPS: { value: FilterChip; label: string }[] = [
   { value: 'all', label: 'All' },
+  { value: 'anime', label: 'Anime' },
+  { value: 'manga', label: 'Manga' },
   { value: 'completed', label: 'Completed' },
   { value: 'watching', label: 'Watching' },
   { value: 'planning', label: 'Planning' },
-  { value: 'movies', label: 'Movies' },
   { value: 'tv', label: 'TV' },
+  { value: 'movies', label: 'Movies' },
   { value: 'ova', label: 'OVA' },
   { value: 'ona', label: 'ONA' },
   { value: 'upcoming', label: 'Upcoming' },
@@ -45,7 +49,7 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'most-seasons', label: 'Most Seasons' },
   { value: 'az', label: 'A\u2013Z' },
   { value: 'za', label: 'Z\u2013A' },
-  { value: 'most-episodes', label: 'Most Episodes' },
+  { value: 'most-progress', label: 'Most Progress' },
   { value: 'newest', label: 'Newest Franchise' },
   { value: 'oldest', label: 'Oldest Franchise' },
   { value: 'completion', label: 'Completion %' },
@@ -71,6 +75,10 @@ function matchesFilter(franchise: Franchise, filter: FilterChip): boolean {
   switch (filter) {
     case 'all':
       return true
+    case 'anime':
+      return seasons.some((s) => s.mediaType === 'ANIME')
+    case 'manga':
+      return seasons.some((s) => s.mediaType === 'MANGA')
     case 'completed':
       return totalSeasons > 0 && completedSeasons === totalSeasons
     case 'watching':
@@ -103,10 +111,14 @@ function sortFranchises(list: Franchise[], sort: SortOption): Franchise[] {
         return b.name.localeCompare(a.name)
       case 'most-seasons':
         return b.totalSeasons - a.totalSeasons || a.name.localeCompare(b.name)
-      case 'most-episodes': {
-        const epA = a.seasons.reduce((sum, s) => sum + s.episodes, 0)
-        const epB = b.seasons.reduce((sum, s) => sum + s.episodes, 0)
-        return epB - epA || a.name.localeCompare(b.name)
+      case 'most-progress': {
+        // Media-aware: sums each story's native size (episodes, chapters or
+        // volumes) so manga-heavy libraries sort sensibly too.
+        const sizeOf = (f: Franchise) =>
+          f.seasons.reduce((sum, s) => sum + seasonTotal(s), 0)
+        const pA = sizeOf(a)
+        const pB = sizeOf(b)
+        return pB - pA || a.name.localeCompare(b.name)
       }
       case 'newest': {
         const maxYear = (f: Franchise) =>

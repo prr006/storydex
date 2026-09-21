@@ -27,8 +27,8 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     setError(null)
 
     try {
-      const entries = await fetchAniListLibrary(username)
-      const expandedEntries = await expandFranchises(entries)
+      const result = await fetchAniListLibrary(username)
+      const expandedEntries = await expandFranchises([...result.anime, ...result.manga])
       const franchises = groupFranchises(expandedEntries)
       saveLibrary(username.trim(), franchises)
       setUsername('')

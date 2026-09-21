@@ -2682,6 +2682,74 @@ img { user-select: none; }
 .dlg__tab.is-active::after { transform: scaleX(1); }
 .dlg__tab:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* media-type scope for search — same hairline language as the tabs,
+   smaller, quiet until touched */
+.dlg__types {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.dlg__type {
+  position: relative;
+  padding: 7px 2px;
+  color: var(--fog);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: color 0.25s ease;
+}
+
+.dlg__type::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1.5px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dlg__type:hover { color: var(--ink); }
+.dlg__type.is-active { color: var(--ink); }
+.dlg__type.is-active::after { transform: scaleX(1); }
+.dlg__type:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* quiet helper line under a field */
+.dlg__hint {
+  margin: 10px 0 0;
+  color: var(--ink-35);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* live whole-list import status — the two lists landing one after the other */
+.dlg__import-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  background: var(--mat);
+  color: var(--fog);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+}
+
+.dlg__status-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: dotLive 2.6s ease-in-out infinite;
+}
+
 .dlg__label {
   display: block;
   margin: 26px 0 12px;

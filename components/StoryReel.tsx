@@ -17,7 +17,7 @@ import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
 import { storyPosition } from '@/components/StoryPath'
 import { storyAccentVars } from '@/lib/storyAccent'
-import { heroSummary } from '@/lib/franchise'
+import { heroSummary, resumePosition, seasonTotal, unitShort } from '@/lib/franchise'
 import type { Franchise } from '@/lib/franchise'
 
 const ROTATE_MS = 6500
@@ -32,7 +32,15 @@ export interface ReelStory {
   /** Total stories in the current index view. */
   of: number
   originYear: string
+  /**
+   * The next numbered unit to resume from (an episode, chapter or volume),
+   * or null for films / one-shots — they have no numbered progress.
+   */
   epNow: number | null
+  /** The unit's short label, e.g. EP / CH / VOL (empty when unnumbered). */
+  unit: string
+  /** Total numbered units for the current entry. */
+  totalUnits: number
 }
 
 /* -------------------------------------------------------------------------- */
@@ -147,7 +155,7 @@ function ReelScene({
                 rel="noreferrer"
                 className="cta cta--accent"
               >
-                Resume EP {story.epNow} <Play aria-hidden="true" />
+                Resume {story.unit} {story.epNow} <Play aria-hidden="true" />
               </a>
             )}
           </div>
@@ -210,7 +218,9 @@ function ReelScene({
                       {next ? (
                         <em>
                           {next.name}
-                          {story.epNow ? ` · EP ${story.epNow}/${next.episodes || '?'}` : ''}
+                          {story.epNow
+                            ? ` · ${story.unit} ${story.epNow}/${story.totalUnits || '?'}`
+                            : ''}
                         </em>
                       ) : null}
                     </span>
@@ -390,7 +400,11 @@ export function buildReelStories(view: Franchise[]): ReelStory[] {
   return view.map((franchise, i) => {
     const firstYear = franchise.seasons[0]?.year
     const next = franchise.nextToWatch
-    const epNow = next && next.episodes > 0 ? Math.min((next.progress ?? 0) + 1, next.episodes) : null
+    // Media-aware: an anime resumes at an episode, a manga at a chapter,
+    // a novel at a volume. Films / one-shots have no numbered unit.
+    const epNow = next ? resumePosition(next) : null
+    const unit = next ? (unitShort(next) ?? '') : ''
+    const totalUnits = next ? seasonTotal(next) : 0
     return {
       franchise,
       pos: storyPosition(franchise),
@@ -398,6 +412,8 @@ export function buildReelStories(view: Franchise[]): ReelStory[] {
       of: view.length,
       originYear: firstYear ? String(firstYear) : '',
       epNow,
+      unit,
+      totalUnits,
     }
   })
 }

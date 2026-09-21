@@ -247,7 +247,7 @@ export default function Dashboard() {
             </h1>
             <p>
               Import your public AniList library and StoryDex will find the connections
-              between seasons, films, and the places you have already been.
+              between every story you follow and the places you have already been.
             </p>
             <button className="cta" onClick={() => setIsImportOpen(true)} type="button">
               Import from AniList <ArrowDown aria-hidden="true" />

@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, AlertCircle, Loader2, ArrowRight, Check, Search } from 'lucide-react'
 import {
   fetchAniListLibrary,
-  fetchMediaByIds,
+  fetchMixedMediaByIds,
   searchAniList,
+  searchAniListAll,
   entriesFromMedia,
   mergeFranchises,
   AniListError,
   type AniListSearchResult,
+  type MediaType,
 } from '@/lib/anilist'
 import { groupFranchises, expandFranchises } from '@/lib/franchise'
 import { loadLibrary, saveLibrary } from '@/lib/storage'
@@ -22,6 +24,8 @@ interface ImportDialogProps {
 }
 
 type Mode = 'find' | 'list'
+/** Which media types the search covers. 'all' = two real AniList queries, merged. */
+type SearchScope = 'all' | 'anime' | 'manga'
 
 function resultTitle(result: AniListSearchResult): string {
   return result.title.english || result.title.romaji || result.title.native || 'Untitled'
@@ -30,8 +34,31 @@ function resultTitle(result: AniListSearchResult): string {
 function resultMeta(result: AniListSearchResult): string {
   const bits: string[] = []
   if (result.seasonYear) bits.push(String(result.seasonYear))
-  if (result.format) bits.push(result.format === 'MOVIE' ? 'film' : result.format.toLowerCase())
-  if (result.episodes) bits.push(`${result.episodes} ep`)
+  // Kind is always identified: a manga is never labelled "anime".
+  const format = result.format
+  const kindWord =
+    format === 'MOVIE'
+      ? 'film'
+      : format === 'ONE_SHOT'
+        ? 'one shot'
+        : format === 'NOVEL'
+          ? 'novel'
+          : format === 'MANGA'
+            ? 'manga'
+            : format
+              ? format.toLowerCase()
+              : result.type === 'MANGA'
+                ? 'manga'
+                : 'anime'
+  bits.push(kindWord)
+  // Totals in the medium's native unit — chapters for manga, volumes for
+  // novels, episodes for anime.
+  if (result.type === 'MANGA') {
+    if (format === 'NOVEL' && result.volumes) bits.push(`${result.volumes} vol`)
+    else if (format !== 'ONE_SHOT' && result.episodes) bits.push(`${result.episodes} ch`)
+  } else if (format !== 'MOVIE' && result.episodes) {
+    bits.push(`${result.episodes} ep`)
+  }
   return bits.join(' · ')
 }
 
@@ -53,6 +80,7 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
 
   // find mode
   const [query, setQuery] = useState('')
+  const [searchScope, setSearchScope] = useState<SearchScope>('all')
   const [results, setResults] = useState<AniListSearchResult[] | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -61,6 +89,8 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
 
   // list mode
   const [username, setUsername] = useState('')
+  /** Live whole-list import status, e.g. "Anime: 123 · Manga: 87". */
+  const [importStatus, setImportStatus] = useState<string | null>(null)
 
   // shared
   const [isImporting, setIsImporting] = useState(false)
@@ -89,11 +119,20 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     setHasSearched(true)
     setError(null)
     try {
-      const found = await searchAniList(q, controller.signal)
+      // "All" is TWO separate AniList queries (one per media type), merged
+      // and deduped — never a single query asked to return both datasets.
+      const found =
+        searchScope === 'all'
+          ? await searchAniListAll(q, controller.signal)
+          : await searchAniList(q, searchScope === 'anime' ? 'ANIME' : 'MANGA', controller.signal)
       setResults(found)
       setSelected(new Set())
       if (found.length === 0) {
-        setError('No anime found for that title on AniList. Try a different spelling.')
+        const kind =
+          searchScope === 'anime' ? 'anime' : searchScope === 'manga' ? 'manga' : 'stories'
+        setError(
+          `No ${kind} found for that title on AniList. Try a different spelling — or another media type.`,
+        )
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
@@ -122,7 +161,14 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     setIsImporting(true)
     setError(null)
     try {
-      const media = await fetchMediaByIds(Array.from(selected))
+      // Each selection keeps its own media type — manga ids must never be
+      // sent through a type: ANIME query.
+      const typeById = new Map((results ?? []).map((r) => [r.id, r.type]))
+      const idsWithType = Array.from(selected).map((id) => ({
+        id,
+        type: (typeById.get(id) ?? 'ANIME') as MediaType,
+      }))
+      const media = await fetchMixedMediaByIds(idsWithType)
       const entries = entriesFromMedia(media)
       const expanded = await expandFranchises(entries)
       const imported = groupFranchises(expanded)
@@ -147,11 +193,24 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     if (!username.trim() || busy) return
     setIsImporting(true)
     setError(null)
+    // One import, two real AniList queries (the profile's anime list and
+    // manga list are fetched separately and merged). The status line keeps
+    // the user informed as each side lands.
+    const counts: Partial<Record<MediaType, number>> = {}
+    const report = () =>
+      setImportStatus(`Anime: ${counts.ANIME ?? '…'} · Manga: ${counts.MANGA ?? '…'}`)
+    report()
     try {
-      const entries = await fetchAniListLibrary(username)
-      const expandedEntries = await expandFranchises(entries)
+      const result = await fetchAniListLibrary(username.trim(), (type, count) => {
+        counts[type] = count
+        report()
+      })
+      const expandedEntries = await expandFranchises([...result.anime, ...result.manga])
       const franchises = groupFranchises(expandedEntries)
-      saveLibrary(username.trim(), franchises)
+      // Whole-list import = this profile IS the library: it replaces any
+      // previously stored one, and the imported username becomes the
+      // stored identity.
+      saveLibrary(result.username, franchises)
       resetAll()
       onClose()
       router.push('/dashboard')
@@ -168,10 +227,12 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
 
   const resetAll = () => {
     setQuery('')
+    setSearchScope('all')
     setResults(null)
     setHasSearched(false)
     setSelected(new Set())
     setUsername('')
+    setImportStatus(null)
   }
 
   // The component stays mounted (it renders AnimatePresence), so reset the
@@ -229,7 +290,8 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
             <p className="dlg__kicker">Begin the expedition</p>
             <h2>Import from AniList</h2>
             <p className="dlg__sub">
-              Find a story to add to your atlas — or chart an entire public AniList library.
+              Find a story to add to your atlas — or chart an entire public AniList
+              library, anime and manga alike.
             </p>
 
             <div className="dlg__tabs" role="tablist" aria-label="Import method">
@@ -257,12 +319,36 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
 
             {mode === 'find' ? (
               <>
+                <div className="dlg__types" role="group" aria-label="Media type">
+                  {(
+                    [
+                      ['all', 'All'],
+                      ['anime', 'Anime'],
+                      ['manga', 'Manga'],
+                    ] as [SearchScope, string][]
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={searchScope === value ? 'dlg__type is-active' : 'dlg__type'}
+                      aria-pressed={searchScope === value}
+                      onClick={() => {
+                        setSearchScope(value)
+                        clearError()
+                      }}
+                      disabled={busy}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="dlg__search">
                   <Search aria-hidden="true" />
                   <input
                     className="dlg__input"
                     type="text"
-                    placeholder="Search anime on AniList — e.g. Re:Zero, Gintama"
+                    placeholder="Search AniList — e.g. Re:Zero, Gintama, Berserk"
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value)
@@ -272,7 +358,7 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
                       if (e.key === 'Enter') handleSearch()
                     }}
                     disabled={busy}
-                    aria-label="Search anime on AniList"
+                    aria-label="Search AniList"
                     autoComplete="off"
                   />
                   <button
@@ -330,7 +416,9 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
                           </div>
                           <div className="dlg__result-copy">
                             <span className="dlg__result-title">{resultTitle(result)}</span>
-                            <span className="dlg__result-meta">{resultMeta(result) || 'anime'}</span>
+                            <span className="dlg__result-meta">
+                              {resultMeta(result) || (result.type === 'MANGA' ? 'manga' : 'anime')}
+                            </span>
                           </div>
                           <span className="dlg__result-check" aria-hidden="true">
                             {isSelected && <Check />}
@@ -395,6 +483,17 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
                   aria-invalid={!!error}
                   autoComplete="off"
                 />
+                <p className="dlg__hint">
+                  Charts the profile&apos;s whole public list — anime and manga — in one
+                  import. It becomes the library in your browser.
+                </p>
+
+                {importStatus && (
+                  <p className="dlg__import-status" role="status">
+                    <i className="dlg__status-dot" aria-hidden="true" />
+                    {importStatus}
+                  </p>
+                )}
 
                 <div className="dlg__actions">
                   <button

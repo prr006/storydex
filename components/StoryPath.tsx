@@ -7,7 +7,16 @@ import { motion, useMotionValueEvent, useScroll, useTransform } from 'framer-mot
 import { ArrowUpRight, Check, Circle, MapPin, Play, Star } from 'lucide-react'
 import { StoryPlate } from '@/components/StoryPlate'
 import { storyAccentVars } from '@/lib/storyAccent'
-import type { Franchise, Season } from '@/lib/franchise'
+import {
+  progressLabel,
+  resumeLabel,
+  resumePosition,
+  seasonTotal,
+  totalShort,
+  unitShort,
+  type Franchise,
+  type Season,
+} from '@/lib/franchise'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -45,6 +54,7 @@ function getSeasonState(season: Season, index: number, currentIndex: number): 'p
 
 function formatLabel(format?: string) {
   if (format === 'MOVIE') return 'film'
+  if (format === 'ONE_SHOT') return 'one shot'
   return format?.toLowerCase() || 'tv'
 }
 
@@ -107,12 +117,13 @@ export function StoryPath({ franchise }: { franchise: Franchise }) {
             const isPast = state === 'past'
             const isFuture = state === 'future'
             const isNext = isCurrent && season.id === franchise.nextToWatch?.id
-            const progressPct = season.episodes > 0
-              ? Math.min(100, ((season.progress ?? 0) / season.episodes) * 100)
+            const total = seasonTotal(season)
+            const unit = unitShort(season)
+            const progressPct = total > 0
+              ? Math.min(100, ((season.progress ?? 0) / total) * 100)
               : 0
-            const epPosition = season.episodes > 0
-              ? Math.min((season.progress ?? 0) + 1, season.episodes)
-              : null
+            // The next numbered unit to open (EP/CH/VOL), or null for films / one-shots.
+            const epPosition = resumePosition(season)
             const score = (season.score ?? 0) > 0 ? (season.score ?? 0) / 10 : null
 
             return (
@@ -143,18 +154,17 @@ export function StoryPath({ franchise }: { franchise: Franchise }) {
                   </div>
                   <h3 className="chapter__title">{season.name}</h3>
                   <p className="chapter__meta">
-                    {formatLabel(season.format)} · {season.episodes || '?'} episodes
+                    {formatLabel(season.format)}{unit ? ` · ${totalShort(season)}` : ''}
                     {isPast ? ' · recorded' : ''}
                   </p>
 
-                  {isCurrent && season.episodes > 0 && (
+                  {isCurrent && unit && total > 1 && (
                     <div className="chapter__progress">
                       <div className="chapter__progress-line">
                         <span style={{ width: `${progressPct}%` }} />
                       </div>
                       <div className="chapter__progress-meta">
-                        <span>{season.progress ? `resume at EP ${epPosition}` : 'begin at EP 1'}</span>
-                        <span>{season.episodes} total</span>
+                        <span>{season.progress ? progressLabel(season) : `begin at ${unit} 1`}</span>
                       </div>
                     </div>
                   )}
@@ -167,7 +177,7 @@ export function StoryPath({ franchise }: { franchise: Franchise }) {
                         rel="noreferrer"
                         className="cta cta--accent"
                       >
-                        Resume EP {epPosition} <Play aria-hidden="true" />
+                        {resumeLabel(season)} <Play aria-hidden="true" />
                       </a>
                     </div>
                   )}
@@ -240,8 +250,10 @@ interface StoryWaypointProps {
 
 export function StoryWaypoint({ season, state, index }: StoryWaypointProps) {
   const format = formatLabel(season.format)
-  const progressPct = season.episodes > 0 && season.progress !== undefined
-    ? Math.min(100, (season.progress / season.episodes) * 100)
+  const total = seasonTotal(season)
+  const unit = unitShort(season)
+  const progressPct = total > 0 && season.progress !== undefined
+    ? Math.min(100, (season.progress / total) * 100)
     : 0
 
   const inner = (
@@ -261,9 +273,9 @@ export function StoryWaypoint({ season, state, index }: StoryWaypointProps) {
           </span>
         </div>
         <p className="ledger__meta">
-          {format} · {season.year || 'undated'} · {season.episodes || '?'} episodes
+          {format} · {season.year || 'undated'}{unit ? ` · ${totalShort(season)}` : ''}
         </p>
-        {state === 'current' && season.episodes > 0 && season.progress !== undefined && (
+        {state === 'current' && total > 0 && season.progress !== undefined && (
           <div className="ledger__progress">
             <span style={{ width: `${progressPct}%` }} />
           </div>

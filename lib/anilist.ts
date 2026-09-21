@@ -1,9 +1,19 @@
 // AniList GraphQL API client.
-// Public, unauthenticated, CORS-enabled endpoint - no API key or server needed.
+// Public, unauthenticated, CORS-enabled endpoint — no API key or server needed.
+//
+// AniList models its catalogue as Media of two types — ANIME and MANGA — and
+// every list/query must say which type it means. Manga formats include
+// MANGA, NOVEL and ONE_SHOT. We never assume type: ANIME retrieves "everything".
 
 import type { Franchise } from './franchise'
 
 const ANILIST_API_URL = 'https://graphql.anilist.co'
+
+/** The two AniList media types. */
+export type MediaType = 'ANIME' | 'MANGA'
+
+/** Formats that belong to the MANGA media type. */
+export const MANGA_FORMATS = new Set(['MANGA', 'NOVEL', 'ONE_SHOT'])
 
 export interface AniListTitle {
   romaji: string | null
@@ -58,19 +68,19 @@ export interface AniListRelationEdge {
   node: AniListRelationNode
 }
 
-export type AniListMediaAiringStatus =
-  | 'FINISHED'
-  | 'RELEASING'
-  | 'NOT_YET_RELEASED'
-  | 'CANCELLED'
-  | 'HIATUS'
+export interface AniListMediaAiringStatus {
+  status: 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS'
+}
 
 export interface AniListMedia {
   id: number
   idMal: number | null
+  type: MediaType
   title: AniListTitle
   format: AniListMediaFormat | null
   episodes: number | null
+  /** Total volumes — only meaningful for NOVEL. */
+  volumes: number | null
   duration: number | null
   seasonYear: number | null
   season: string | null
@@ -80,6 +90,7 @@ export interface AniListMedia {
   coverImage: { large: string | null; extraLarge: string | null; color: string | null } | null
   bannerImage: string | null
   siteUrl: string | null
+  /** Airing/publication status of the media itself. */
   status: AniListMediaAiringStatus | null
   relations: { edges: AniListRelationEdge[] } | null
 }
@@ -88,14 +99,32 @@ export interface AniListListEntry {
   id: number
   status?: AniListMediaStatus
   score: number
+  /**
+   * Native progress units for the entry's media:
+   * anime → episodes watched, manga → chapters read, novel → volumes read.
+   */
   progress: number
   media: AniListMedia
   isExpanded?: boolean
 }
 
+export interface AniListSearchResult {
+  id: number
+  type: MediaType
+  title: AniListTitle
+  format: AniListMediaFormat | null
+  seasonYear: number | null
+  episodes: number | null
+  volumes: number | null
+  coverImage: { large: string | null; extraLarge: string | null } | null
+  bannerImage: string | null
+  description: string | null
+}
+
 const MEDIA_FIELDS = `
   id
   idMal
+  type
   title {
     romaji
     english
@@ -104,6 +133,7 @@ const MEDIA_FIELDS = `
   format
   status
   episodes
+  volumes
   duration
   seasonYear
   season
@@ -139,8 +169,8 @@ const MEDIA_FIELDS = `
 `
 
 const LIBRARY_QUERY = `
-query ($userName: String, $chunk: Int, $perChunk: Int) {
-  MediaListCollection(userName: $userName, type: ANIME, chunk: $chunk, perChunk: $perChunk, sort: SCORE_DESC) {
+query ($userName: String, $type: MediaType!, $chunk: Int, $perChunk: Int) {
+  MediaListCollection(userName: $userName, type: $type, chunk: $chunk, perChunk: $perChunk, sort: SCORE_DESC) {
     hasNextChunk
     lists {
       name
@@ -160,31 +190,21 @@ query ($userName: String, $chunk: Int, $perChunk: Int) {
 `
 
 const MEDIA_QUERY = `
-query ($ids: [Int]) {
+query ($ids: [Int], $type: MediaType!) {
   Page {
-    media(id_in: $ids, type: ANIME) {
+    media(id_in: $ids, type: $type) {
       ${MEDIA_FIELDS}
     }
   }
 }
 `
 
-export interface AniListSearchResult {
-  id: number
-  title: AniListTitle
-  format: AniListMediaFormat | null
-  seasonYear: number | null
-  episodes: number | null
-  coverImage: { large: string | null; extraLarge: string | null } | null
-  bannerImage: string | null
-  description: string | null
-}
-
 const SEARCH_QUERY = `
-query ($search: String) {
+query ($search: String, $type: MediaType!) {
   Page(perPage: 24) {
-    media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+    media(search: $search, type: $type, sort: POPULARITY_DESC) {
       id
+      type
       title {
         romaji
         english
@@ -193,6 +213,7 @@ query ($search: String) {
       format
       seasonYear
       episodes
+      volumes
       coverImage {
         large
         extraLarge
@@ -214,15 +235,21 @@ export class AniListError extends Error {
 }
 
 async function graphqlRequest<T>(query: string, variables: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(ANILIST_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(ANILIST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ query, variables }),
+      signal,
+    })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    throw new AniListError('Could not reach AniList. Check your connection and try again.')
+  }
 
   let json: any
   try {
@@ -233,11 +260,17 @@ async function graphqlRequest<T>(query: string, variables: Record<string, unknow
 
   if (!response.ok || json.errors) {
     const message: string = json?.errors?.[0]?.message || 'Failed to reach AniList.'
-    if (response.status === 404 || /not found/i.test(message)) {
+    if (response.status === 404 || /not found|no user/i.test(message)) {
       throw new AniListError(`AniList user not found. Double-check the username and try again.`, 404)
     }
     if (response.status === 429) {
       throw new AniListError('AniList is rate-limiting requests right now. Please wait a moment and try again.', 429)
+    }
+    if (/private|not public|unauthorized|forbidden/i.test(message)) {
+      throw new AniListError(
+        "Couldn't access this AniList user's lists. Check the username, or that the list is public.",
+        response.status,
+      )
     }
     throw new AniListError(message, response.status)
   }
@@ -245,66 +278,116 @@ async function graphqlRequest<T>(query: string, variables: Record<string, unknow
   return json.data as T
 }
 
-/**
- * Fetches a user's entire anime list from AniList, paging through chunks
- * until the API reports there are no more entries left.
- */
-export async function fetchAniListLibrary(username: string): Promise<AniListListEntry[]> {
-  const trimmed = username.trim()
-  if (!trimmed) {
-    throw new AniListError('Please enter an AniList username.')
-  }
+/* -------------------------------------------------------------------------- */
+/* Whole-profile import — BOTH media types, fetched separately               */
+/* -------------------------------------------------------------------------- */
 
+export interface ProfileImportResult {
+  username: string
+  anime: AniListListEntry[]
+  manga: AniListListEntry[]
+  /** Non-fatal notes, e.g. "This user's manga list is empty." */
+  warnings: string[]
+}
+
+export type ProfileImportProgress = (type: MediaType, entriesSoFar: number) => void
+
+const FETCH_CHUNK_SIZE = 500
+const MAX_CHUNKS = 20
+
+async function fetchListForType(
+  username: string,
+  type: MediaType,
+): Promise<AniListListEntry[]> {
   const entries: AniListListEntry[] = []
   let chunk = 1
-  const perChunk = 500
-  // Safety cap so a malformed API response can never spin forever.
-  const maxChunks = 20
 
-  while (chunk <= maxChunks) {
+  while (chunk <= MAX_CHUNKS) {
     const data = await graphqlRequest<{
       MediaListCollection: { hasNextChunk: boolean; lists: { entries: AniListListEntry[] }[] } | null
-    }>(LIBRARY_QUERY, { userName: trimmed, chunk, perChunk })
+    }>(LIBRARY_QUERY, { userName: username, type, chunk, perChunk: FETCH_CHUNK_SIZE })
 
     const collection = data.MediaListCollection
-
-    if (!collection) {
-      break
-    }
+    if (!collection) break
 
     for (const list of collection.lists) {
       entries.push(...list.entries)
     }
-
-    if (!collection.hasNextChunk) {
-      break
-    }
+    if (!collection.hasNextChunk) break
     chunk += 1
-  }
-
-  if (entries.length === 0) {
-    // Could be an empty list or a user with a private list - either way there's
-    // nothing to import, so surface a clear message instead of a blank dashboard.
-    throw new AniListError(
-      'No anime entries found for that username. The list may be empty or private.',
-    )
   }
 
   return entries
 }
 
+/**
+ * Imports a whole public AniList profile — the anime list AND the manga list,
+ * fetched separately (MediaListCollection requires a media type).
+ *
+ * Outcome rules:
+ * - user not found / lists private  → AniListError (say what actually happened)
+ * - one side empty                  → import the other side + a warning
+ * - both sides empty                → AniListError("no anime or manga entries")
+ */
+export async function fetchAniListLibrary(
+  username: string,
+  onProgress?: ProfileImportProgress,
+): Promise<ProfileImportResult> {
+  const trimmed = username.trim()
+  if (!trimmed) {
+    throw new AniListError('Please enter an AniList username.')
+  }
+
+  const warnings: string[] = []
+
+  const anime = await fetchListForType(trimmed, 'ANIME')
+  onProgress?.('ANIME', anime.length)
+
+  let manga: AniListListEntry[] = []
+  try {
+    manga = await fetchListForType(trimmed, 'MANGA')
+  } catch (err) {
+    // A private/missing manga list must not destroy a perfectly good anime list.
+    if (anime.length === 0) throw err
+    if (err instanceof AniListError) {
+      warnings.push(err.message)
+    } else {
+      warnings.push("Couldn't read this user's manga list.")
+    }
+  }
+  onProgress?.('MANGA', manga.length)
+
+  if (anime.length === 0 && manga.length === 0) {
+    throw new AniListError(
+      `This AniList user has no anime or manga entries in their lists.`,
+    )
+  }
+  if (anime.length === 0) warnings.push("This user's anime list is empty — imported manga only.")
+  if (manga.length === 0) warnings.push("This user's manga list is empty — imported anime only.")
+
+  return { username: trimmed, anime, manga, warnings }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Media by ID — type is meaningful in AniList, so batch per media type      */
+/* -------------------------------------------------------------------------- */
+
 export const FETCH_MEDIA_BATCH_SIZE = 50
 
-export async function fetchMediaByIds(ids: number[]): Promise<AniListMedia[]> {
+/**
+ * Fetches media of ONE AniList type. Sending manga ids through a
+ * `type: ANIME` query silently returns nothing — callers must batch by type.
+ */
+export async function fetchMediaByIds(ids: number[], type: MediaType): Promise<AniListMedia[]> {
   const uniqueIds = Array.from(new Set(ids))
   const results: AniListMedia[] = []
 
   for (let i = 0; i < uniqueIds.length; i += FETCH_MEDIA_BATCH_SIZE) {
     const batch = uniqueIds.slice(i, i + FETCH_MEDIA_BATCH_SIZE)
-    const data = await graphqlRequest<{
-      Page: { media: AniListMedia[] } | null
-    }>(MEDIA_QUERY, { ids: batch })
-    
+    const data = await graphqlRequest<{ Page: { media: AniListMedia[] } | null }>(
+      MEDIA_QUERY,
+      { ids: batch, type },
+    )
     if (data.Page?.media) {
       results.push(...data.Page.media)
     }
@@ -313,12 +396,30 @@ export async function fetchMediaByIds(ids: number[]): Promise<AniListMedia[]> {
   return results
 }
 
-/**
- * Real AniList search: returns the actual media AniList matches for a query.
- * Supports cancellation so a closed/abandoned dialog never lingers.
- */
+/** Fetches a mix of anime and manga ids, batching each type separately. */
+export async function fetchMixedMediaByIds(
+  idsWithType: { id: number; type: MediaType }[],
+): Promise<AniListMedia[]> {
+  const byType = new Map<MediaType, number[]>()
+  for (const { id, type } of idsWithType) {
+    const list = byType.get(type) ?? []
+    list.push(id)
+    byType.set(type, list)
+  }
+  const results: AniListMedia[] = []
+  for (const [type, ids] of byType) {
+    results.push(...(await fetchMediaByIds(ids, type)))
+  }
+  return results
+}
+
+/* -------------------------------------------------------------------------- */
+/* Search — per media type; "all" merges two real queries                    */
+/* -------------------------------------------------------------------------- */
+
 export async function searchAniList(
   query: string,
+  type: MediaType,
   signal?: AbortSignal,
 ): Promise<AniListSearchResult[]> {
   const trimmed = query.trim()
@@ -327,16 +428,45 @@ export async function searchAniList(
   }
   const data = await graphqlRequest<{ Page: { media: AniListSearchResult[] } | null }>(
     SEARCH_QUERY,
-    { search: trimmed },
+    { search: trimmed, type },
     signal,
   )
   return data.Page?.media ?? []
 }
 
 /**
+ * "All" search: two separate AniList queries (one per media type), merged
+ * and deduplicated by AniList id. AniList has a single id space, so the same
+ * title existing as both anime and manga can never overwrite itself — each
+ * is a distinct, selectable entry.
+ */
+export async function searchAniListAll(
+  query: string,
+  signal?: AbortSignal,
+): Promise<AniListSearchResult[]> {
+  const [anime, manga] = await Promise.all([
+    searchAniList(query, 'ANIME', signal),
+    searchAniList(query, 'MANGA', signal),
+  ])
+  const seen = new Set<number>()
+  const merged: AniListSearchResult[] = []
+  // Interleave so both media kinds are visible in one list.
+  const max = Math.max(anime.length, manga.length)
+  for (let i = 0; i < max; i++) {
+    for (const item of [anime[i], manga[i]]) {
+      if (item && !seen.has(item.id)) {
+        seen.add(item.id)
+        merged.push(item)
+      }
+    }
+  }
+  return merged
+}
+
+/**
  * Wraps selected media as library entries so they flow through the same
- * expansion + grouping pipeline as a username import. New entries are marked
- * CURRENT with no progress, which anchors "you are here" at the first episode.
+ * expansion + grouping pipeline as a profile import. New entries are marked
+ * CURRENT with no progress, which anchors "you are here" at the start.
  */
 export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
   return media.map((m) => ({
@@ -350,9 +480,11 @@ export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
 }
 
 /**
- * Merges newly imported franchises into an existing stored library.
- * Franchises already in the library keep their recorded progress; new ones
- * are appended. Order: existing library first, then additions.
+ * Merges newly imported franchises into an existing stored library
+ * (single-story "Find a story" flow). Franchises already in the library keep
+ * their recorded progress; new ones are appended.
+ *
+ * Whole-profile imports do NOT use this — they replace the stored library.
  */
 export function mergeFranchises(existing: Franchise[], additions: Franchise[]): Franchise[] {
   const known = new Set(existing.map((franchise) => franchise.id))
