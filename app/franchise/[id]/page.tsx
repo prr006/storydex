@@ -23,7 +23,7 @@ import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
-import { storyAccentVars, storyHue } from '@/lib/storyAccent'
+import { storyAccentVars } from '@/lib/storyAccent'
 import { heroSummary } from '@/lib/franchise'
 import type { Franchise, Season } from '@/lib/franchise'
 
@@ -81,24 +81,15 @@ function FranchiseCover({
       style={storyAccentVars(franchise.id)}
       aria-labelledby="franchise-title"
     >
-      {/* L1 — the world, soft: same artwork, enlarged + blurred, may fill */}
+      {/* L1 — the stage: story-derived atmosphere, never a copy of the art */}
       <motion.div
-        className="cover__bg"
+        className="cover__stage"
         aria-hidden="true"
-        style={{ '--art-pos': `${35 + (storyHue(franchise.id) % 31)}% 38%` } as CSSProperties}
-        initial={{ opacity: 0, scale: 1.07 }}
-        whileInView={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 1.1, ease: 'easeOut' }}
-      >
-        <Image
-          src={franchise.bannerUrl || franchise.posterUrl}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-        />
-      </motion.div>
+        transition={{ duration: 1.1 }}
+      />
 
       {/* L2 — the artwork, faithful: fitted, not cropped */}
       <motion.div

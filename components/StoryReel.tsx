@@ -16,7 +16,7 @@ import { StoryPlate } from '@/components/StoryPlate'
 import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
 import { storyPosition } from '@/components/StoryPath'
-import { storyAccentVars, storyHue } from '@/lib/storyAccent'
+import { storyAccentVars } from '@/lib/storyAccent'
 import { heroSummary } from '@/lib/franchise'
 import type { Franchise } from '@/lib/franchise'
 
@@ -33,12 +33,6 @@ export interface ReelStory {
   of: number
   originYear: string
   epNow: number | null
-}
-
-/** Deterministic per-story art direction for the soft background layer. */
-function backgroundPosition(id: string) {
-  const h = storyHue(id)
-  return `${35 + (h % 31)}% 38%`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -72,27 +66,19 @@ function ReelScene({
       exit={{ opacity: 0 }}
       transition={{ duration: reduced ? 0.12 : 0.85, ease: EASE }}
     >
-      {/* L1 — the world, soft: same artwork, enlarged + blurred, may fill */}
+      {/* L1 — the stage: story-derived atmosphere (deep ink base, story
+          light, film grain). Never another copy of the artwork — the viewer
+          should perceive exactly ONE piece of art in the space. */}
       <motion.div
-        className="cover__bg"
+        className="cover__stage"
         aria-hidden="true"
-        style={{ '--art-pos': backgroundPosition(franchise.id) } as CSSProperties}
-        initial={{ opacity: reduced ? 1 : 0, scale: reduced ? 1 : 1.07 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 1.05 }}
-        transition={{ duration: sceneDur, ease: 'easeOut' }}
-      >
-        <Image
-          src={artSrc}
-          alt=""
-          fill
-          sizes="100vw"
-          priority={isInitial}
-          loading={isInitial ? 'eager' : 'lazy'}
-        />
-      </motion.div>
+        initial={{ opacity: reduced ? 1 : 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: sceneDur }}
+      />
 
-      {/* L2 — the artwork, faithful: fitted, not cropped */}
+      {/* L2 — the artwork, faithful: fitted to the stage, never cropped */}
       <motion.div
         className="cover__art"
         aria-hidden="true"
