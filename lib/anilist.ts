@@ -78,8 +78,11 @@ export interface AniListMedia {
   type: MediaType
   title: AniListTitle
   format: AniListMediaFormat | null
+  /** Total episodes — anime entries only (null for manga). */
   episodes: number | null
-  /** Total volumes — only meaningful for NOVEL. */
+  /** Total chapters — manga entries only (null for anime). */
+  chapters: number | null
+  /** Total volumes — novel entries only. */
   volumes: number | null
   duration: number | null
   seasonYear: number | null
@@ -100,10 +103,15 @@ export interface AniListListEntry {
   status?: AniListMediaStatus
   score: number
   /**
-   * Native progress units for the entry's media:
-   * anime → episodes watched, manga → chapters read, novel → volumes read.
+   * AniList's `progress` — the consumed count in the medium's primary unit:
+   * anime → episodes watched, manga → chapters read. For NOVEL entries this
+   * is NOT the volume count; use `progressVolumes` instead.
    */
   progress: number
+  /**
+   * AniList's `progressVolumes` — volumes read (NOVEL entries only).
+   */
+  progressVolumes: number
   media: AniListMedia
   isExpanded?: boolean
 }
@@ -114,7 +122,11 @@ export interface AniListSearchResult {
   title: AniListTitle
   format: AniListMediaFormat | null
   seasonYear: number | null
+  /** Anime total (null for manga). */
   episodes: number | null
+  /** Manga total (null for anime) — never substitute `episodes`. */
+  chapters: number | null
+  /** Novel total. */
   volumes: number | null
   coverImage: { large: string | null; extraLarge: string | null } | null
   bannerImage: string | null
@@ -133,6 +145,7 @@ const MEDIA_FIELDS = `
   format
   status
   episodes
+  chapters
   volumes
   duration
   seasonYear
@@ -180,6 +193,7 @@ query ($userName: String, $type: MediaType!, $chunk: Int, $perChunk: Int) {
         status
         score(format: POINT_100)
         progress
+        progressVolumes
         media {
           ${MEDIA_FIELDS}
         }
@@ -213,6 +227,7 @@ query ($search: String, $type: MediaType!) {
       format
       seasonYear
       episodes
+      chapters
       volumes
       coverImage {
         large
@@ -295,6 +310,12 @@ export type ProfileImportProgress = (type: MediaType, entriesSoFar: number) => v
 const FETCH_CHUNK_SIZE = 500
 const MAX_CHUNKS = 20
 
+/** Wire shape of a MediaListCollection entry — both counters are nullable Int. */
+type RawListEntry = Omit<AniListListEntry, 'progress' | 'progressVolumes'> & {
+  progress: number | null
+  progressVolumes: number | null
+}
+
 async function fetchListForType(
   username: string,
   type: MediaType,
@@ -304,14 +325,21 @@ async function fetchListForType(
 
   while (chunk <= MAX_CHUNKS) {
     const data = await graphqlRequest<{
-      MediaListCollection: { hasNextChunk: boolean; lists: { entries: AniListListEntry[] }[] } | null
+      MediaListCollection: { hasNextChunk: boolean; lists: { entries: RawListEntry[] }[] } | null
     }>(LIBRARY_QUERY, { userName: username, type, chunk, perChunk: FETCH_CHUNK_SIZE })
 
     const collection = data.MediaListCollection
     if (!collection) break
 
     for (const list of collection.lists) {
-      entries.push(...list.entries)
+      for (const raw of list.entries) {
+        // Sensible defaults when AniList returns null.
+        entries.push({
+          ...raw,
+          progress: raw.progress ?? 0,
+          progressVolumes: raw.progressVolumes ?? 0,
+        })
+      }
     }
     if (!collection.hasNextChunk) break
     chunk += 1
@@ -474,6 +502,7 @@ export function entriesFromMedia(media: AniListMedia[]): AniListListEntry[] {
     status: 'CURRENT',
     score: 0,
     progress: 0,
+    progressVolumes: 0,
     media: m,
     isExpanded: true,
   }))

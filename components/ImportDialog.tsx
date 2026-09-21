@@ -51,11 +51,12 @@ function resultMeta(result: AniListSearchResult): string {
                 ? 'manga'
                 : 'anime'
   bits.push(kindWord)
-  // Totals in the medium's native unit — chapters for manga, volumes for
-  // novels, episodes for anime.
+  // Totals in the medium's native AniList field — media.chapters for manga
+  // (never media.episodes), media.volumes for novels, media.episodes for
+  // anime.
   if (result.type === 'MANGA') {
     if (format === 'NOVEL' && result.volumes) bits.push(`${result.volumes} vol`)
-    else if (format !== 'ONE_SHOT' && result.episodes) bits.push(`${result.episodes} ch`)
+    else if (format !== 'ONE_SHOT' && result.chapters) bits.push(`${result.chapters} ch`)
   } else if (format !== 'MOVIE' && result.episodes) {
     bits.push(`${result.episodes} ep`)
   }

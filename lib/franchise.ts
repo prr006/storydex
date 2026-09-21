@@ -277,6 +277,7 @@ export async function expandFranchises(entries: AniListListEntry[]): Promise<Ani
           id: 0, // Mock ID for list entry
           score: 0,
           progress: 0,
+          progressVolumes: 0,
           media,
           isExpanded: true,
         })
@@ -402,6 +403,12 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
       const completed = entry.status === 'COMPLETED' || entry.status === 'REPEATING'
       const mediaType: MediaType = entry.media.type === 'MANGA' ? 'MANGA' : 'ANIME'
       const format = entry.media.format ?? (mediaType === 'MANGA' ? 'MANGA' : 'TV')
+      // Each medium maps from its OWN AniList fields — never a substitute:
+      //   ANIME    → media.episodes
+      //   MANGA    → media.chapters   (NOT media.episodes)
+      //   NOVEL    → media.volumes
+      //   ONE_SHOT → no numbered total
+      const isNovel = mediaType === 'MANGA' && format === 'NOVEL'
       return {
         id: String(entry.media.id),
         name: preferredTitle(entry.media.title),
@@ -411,17 +418,17 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
         status: entry.status,
         format,
         score: entry.score ?? 0,
-        // Native units only — a manga's chapters are never stored as episodes.
         episodes: mediaType === 'ANIME' ? (entry.media.episodes ?? 0) : undefined,
         chapters:
-          mediaType === 'MANGA' && format === 'MANGA' ? (entry.media.episodes ?? 0) : undefined,
-        volumes:
-          mediaType === 'MANGA' && format === 'NOVEL'
-            ? (entry.media.volumes ?? entry.media.episodes ?? 0)
-            : undefined,
-        // AniList's list "progress" is native per medium:
-        // episodes (anime) / chapters (manga) / volumes (novel).
-        progress: entry.progress ?? 0,
+          mediaType === 'MANGA' && format === 'MANGA' ? (entry.media.chapters ?? 0) : undefined,
+        volumes: isNovel ? (entry.media.volumes ?? 0) : undefined,
+        // Progress is native per medium:
+        //   ANIME / MANGA → list "progress" (episodes watched / chapters read)
+        //   NOVEL         → list "progressVolumes" (volumes read). The novel
+        //                   "progress" field is NOT a volume count, so it is
+        //                   deliberately ignored for novels.
+        //   ONE_SHOT      → no numbered progress.
+        progress: isNovel ? (entry.progressVolumes ?? 0) : (entry.progress ?? 0),
         aniListId: entry.media.id,
         posterUrl: entry.media.coverImage?.extraLarge || entry.media.coverImage?.large || '/placeholder.svg',
         siteUrl: entry.media.siteUrl,
