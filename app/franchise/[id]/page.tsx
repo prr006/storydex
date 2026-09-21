@@ -23,7 +23,7 @@ import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
 import { StoryPath, StoryWaypoint, getWaypointStates, storyPosition } from '@/components/StoryPath'
 import { useLibrary } from '@/lib/useLibrary'
-import { storyAccentVars } from '@/lib/storyAccent'
+import { storyAccentVars, storyHue } from '@/lib/storyAccent'
 import { heroSummary } from '@/lib/franchise'
 import type { Franchise, Season } from '@/lib/franchise'
 
@@ -81,18 +81,48 @@ function FranchiseCover({
       style={storyAccentVars(franchise.id)}
       aria-labelledby="franchise-title"
     >
-      <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
+      {/* L1 — the world, soft: same artwork, enlarged + blurred, may fill */}
+      <motion.div
+        className="cover__bg"
+        aria-hidden="true"
+        style={{ '--art-pos': `${35 + (storyHue(franchise.id) % 31)}% 38%` } as CSSProperties}
+        initial={{ opacity: 0, scale: 1.07 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.1, ease: 'easeOut' }}
+      >
         <Image
           src={franchise.bannerUrl || franchise.posterUrl}
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover"
         />
       </motion.div>
+
+      {/* L2 — the artwork, faithful: fitted, not cropped */}
+      <motion.div
+        className="cover__art"
+        style={{ y: artY }}
+        aria-hidden="true"
+        initial={{ opacity: 0, scale: 1.02 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
+      >
+        <Image
+          src={franchise.bannerUrl || franchise.posterUrl}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+        />
+      </motion.div>
+
+      {/* L3 — cinematic light + atmosphere + the title's own territory */}
       <div className="cover__light" aria-hidden="true" />
       <div className="cover__atmos" aria-hidden="true" />
+      <div className="cover__veil" aria-hidden="true" />
 
       <div className="cover__inner">
         <div className="cover__body">

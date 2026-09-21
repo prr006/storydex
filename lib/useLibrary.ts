@@ -1,49 +1,50 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { loadLibrary, type StoredLibrary } from './storage'
-import { mockFranchises } from './mockData'
+import { useCallback, useEffect, useState } from 'react'
 import type { Franchise } from './franchise'
+import { loadLibrary } from './storage'
 
 export interface LibraryState {
+  /** The imported library. Empty until the user has actually imported from AniList. */
   franchises: Franchise[]
+  /** The AniList username this library was imported from, if any. */
   username: string | null
+  /**
+   * True only when a real library exists in local storage — never inferred from
+   * bundled or demo content.
+   */
   isImported: boolean
+  /** True while the local library is being read. Shows a neutral loading state —
+   *  never demo content — so the first paint is honest. */
   loading: boolean
 }
 
-/**
- * Reads the imported AniList library from localStorage on mount and keeps it
- * in sync with future imports (in this tab or another). Falls back to the
- * bundled example franchises when nothing has been imported yet, so the
- * landing page's "Browse Examples" link keeps working.
- */
-export function useLibrary(): LibraryState {
-  const [state, setState] = useState<LibraryState>({
-    franchises: [],
-    username: null,
-    isImported: false,
-    loading: true,
-  })
+const EMPTY: LibraryState = { franchises: [], username: null, isImported: false, loading: true }
+
+export function useLibrary() {
+  const [state, setState] = useState<LibraryState>(EMPTY)
 
   const refresh = useCallback(() => {
-    const stored: StoredLibrary | null = loadLibrary()
+    const stored = loadLibrary()
     if (stored && stored.franchises.length > 0) {
-      setState({ franchises: stored.franchises, username: stored.username, isImported: true, loading: false })
+      setState({
+        franchises: stored.franchises,
+        username: stored.username,
+        isImported: true,
+        loading: false,
+      })
     } else {
-      setState({ franchises: mockFranchises, username: null, isImported: false, loading: false })
+      // No imported library — the atlas is genuinely empty.
+      setState({ franchises: [], username: null, isImported: false, loading: false })
     }
   }, [])
 
   useEffect(() => {
     refresh()
-    window.addEventListener('storydex:library-updated', refresh)
-    window.addEventListener('storage', refresh)
-    return () => {
-      window.removeEventListener('storydex:library-updated', refresh)
-      window.removeEventListener('storage', refresh)
-    }
+    const handler = () => refresh()
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
   }, [refresh])
 
-  return state
+  return { ...state, refresh }
 }

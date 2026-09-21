@@ -1,9 +1,8 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   ArrowDown,
   ArrowRight,
@@ -11,14 +10,14 @@ import {
   Check,
   ChevronDown,
   MapPin,
-  Play,
   Search,
   SlidersHorizontal,
 } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { ImportDialog } from '@/components/ImportDialog'
-import { StoryPlate } from '@/components/StoryPlate'
+import { FirstRun } from '@/components/FirstRun'
+import { StoryReel, buildReelStories } from '@/components/StoryReel'
 import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
 import { storyPosition } from '@/components/StoryPath'
@@ -29,14 +28,9 @@ import {
   SORT_OPTIONS,
   useDashboardControls,
 } from '@/lib/useDashboardControls'
-import { heroSummary } from '@/lib/franchise'
 import type { Franchise } from '@/lib/franchise'
 
 const MotionLink = motion.create(Link)
-
-/* -------------------------------------------------------------------------- */
-/* per-story journey geometry, shared by the cover route and the index glyphs */
-/* -------------------------------------------------------------------------- */
 
 function stateWord(franchise: Franchise) {
   if (franchise.completedSeasons === franchise.totalSeasons && franchise.totalSeasons > 0) {
@@ -50,190 +44,19 @@ function stateWord(franchise: Franchise) {
   return { label: 'unstarted', tone: 'quiet' as const }
 }
 
-/**
- * The current story as a full-bleed world.
- *
- * Motion's useScroll is called HERE — inside the component that owns the
- * ref'd <section> — so the ref is always attached before Motion measures it.
- * (A ref whose element mounts later, or never, makes useScroll throw
- * "Target ref is defined but not hydrated".)
- */
-function DashboardCover({
-  story,
-  pos,
-  storyNumber,
-  total,
-  originYear,
-  epNow,
-}: {
-  story: Franchise
-  pos: { total: number; pos: number; fill: number; complete: boolean }
-  storyNumber: number
-  total: number
-  originYear: string
-  epNow: number | null
-}) {
-  const next = story.nextToWatch
-  const coverRef = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: coverRef,
-    offset: ['start start', 'end start'],
-  })
-  const artY = useTransform(scrollYProgress, [0, 1], ['0%', '14%'])
-  const hazeY = useTransform(scrollYProgress, [0, 1], ['0%', '-7%'])
-
-  return (
-    <section
-      ref={coverRef}
-      className="cover"
-      style={storyAccentVars(story.id)}
-      aria-labelledby="current-story-title"
-    >
-      <motion.div className="cover__art" style={{ y: artY }} aria-hidden="true">
-        <Image
-          src={story.bannerUrl || story.posterUrl}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-      </motion.div>
-      <motion.div className="cover__light" style={{ y: hazeY }} aria-hidden="true" />
-      <div className="cover__atmos" aria-hidden="true" />
-
-      <div className="cover__inner">
-        <div className="cover__body">
-          <div className="cover__toplink">
-            <span className="label">
-              <i className="label__dot label__dot--live" aria-hidden="true" /> Current story
-            </span>
-          </div>
-
-          {/* one compact metadata zone: human-facing line + factual line */}
-          <div className="cover__meta">
-            <span className="cover__meta--genres">
-              {story.genres.slice(0, 2).join(' · ') || 'unclassified'}
-            </span>
-            <span className="cover__meta--facts">
-              {String(storyNumber).padStart(2, '0')} / {String(total).padStart(2, '0')} in your atlas
-              {originYear ? ` · ${originYear}` : ''} · {String(story.completedSeasons).padStart(2, '0')} / {String(story.totalSeasons).padStart(2, '0')} recorded
-            </span>
-          </div>
-
-          <h1 id="current-story-title" className="cover__title">
-            <WordReveal text={story.name} as="span" delay={0.45} emphasizeLast />
-          </h1>
-
-          <p className="cover__desc">{heroSummary(story)}</p>
-
-          <div className="cover__cta">
-            <Link href={`/franchise/${story.id}`} className="cta">
-              Enter the story <ArrowRight aria-hidden="true" />
-            </Link>
-            {next?.siteUrl && epNow && (
-              <a href={next.siteUrl} target="_blank" rel="noreferrer" className="cta cta--accent">
-                Resume EP {epNow} <Play aria-hidden="true" />
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="cover__plate">
-          <StoryPlate
-            src={story.posterUrl}
-            alt={story.name}
-            plate="01"
-            caption={`origin — ${originYear || '—'}`}
-            size="md"
-            state="current"
-            tilt
-            eager
-          />
-        </div>
-
-        {/* Your position on the story — the route crosses the world */}
-        <div className="cover__route">
-          <div className="route">
-            <div className="route__ends">
-              <span>Origin{originYear ? ` — ${originYear}` : ''}</span>
-              <span>{story.seasons.length} entries</span>
-              <span>Horizon</span>
-            </div>
-            <div
-              className="route__track"
-              style={{ '--route-fill': `${pos.fill * 100}%` } as CSSProperties}
-            >
-              <div className="route__baseline" />
-              <div className="route__ink" />
-              {story.seasons.map((season, index) => {
-                const state = pos.complete
-                  ? 'past'
-                  : index < pos.pos
-                    ? 'past'
-                    : index === pos.pos && !pos.complete
-                      ? 'current'
-                      : 'future'
-                return (
-                  <Link
-                    key={season.id}
-                    href={`/franchise/${story.id}`}
-                    className={`route__tick route__tick--${state}`}
-                    style={{ left: `${pos.total > 1 ? (index / (pos.total - 1)) * 100 : 0}%` }}
-                    aria-label={season.name}
-                  >
-                    <i />
-                  </Link>
-                )
-              })}
-              {!pos.complete && (
-                <Beacon
-                  style={{ left: `${pos.fill * 100}%` }}
-                  flag={
-                    <span className={`beacon__flag${pos.fill > 0.82 ? ' beacon__flag--end' : ''}`}>
-                      <MapPin aria-hidden="true" />
-                      <b>You</b>
-                      {next ? (
-                        <em>
-                          {next.name}
-                          {epNow ? ` · EP ${epNow}/${next.episodes || '?'}` : ''}
-                        </em>
-                      ) : null}
-                    </span>
-                  }
-                />
-              )}
-              {pos.complete && (
-                <Beacon
-                  style={{ left: '100%' }}
-                  flag={
-                    <span className="beacon__flag beacon__flag--end">
-                      <Check aria-hidden="true" />
-                      <b>Complete</b>
-                    </span>
-                  }
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 export default function Dashboard() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const { franchises, isImported, loading, username } = useLibrary()
   const { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered } =
     useDashboardControls(franchises)
 
-  const activeStory = useMemo(
-    () =>
-      filtered.find((franchise) => franchise.nextToWatch) ||
-      filtered.find((franchise) => franchise.completedSeasons < franchise.totalSeasons) ||
-      filtered[0],
-    [filtered],
+  /* The reel follows the current index view (sorted/filtered) so the hero and
+     the table of contents always agree. When the view is empty (a search that
+     matches nothing), the hero falls back to the whole library — it never
+     disappears, and the index shows its own "no matches" state below. */
+  const reelStories = useMemo(
+    () => buildReelStories(filtered.length > 0 ? filtered : franchises),
+    [filtered, franchises],
   )
 
   const stats = useMemo(() => {
@@ -249,40 +72,28 @@ export default function Dashboard() {
     }
   }, [franchises])
 
-  const next = activeStory?.nextToWatch ?? null
-  const activePos = activeStory ? storyPosition(activeStory) : null
-  const epNow = next && next.episodes > 0 ? Math.min((next.progress ?? 0) + 1, next.episodes) : null
-  const activeStoryNumber = activeStory ? Math.max(filtered.indexOf(activeStory) + 1, 1) : 1
-  const firstYear = activeStory?.seasons[0]?.year
-  const originYear = firstYear ? String(firstYear) : ''
-
   return (
-    <div className="app-shell" style={activeStory ? storyAccentVars(activeStory.id) : undefined}>
+    <div className="app-shell">
       <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <main>
-        {!loading && !isImported && (
-          <div className="field-note">
-            <span><i aria-hidden="true" /> Sample atlas active</span>
-            <button onClick={() => setIsImportOpen(true)} className="cta cta--dim" type="button">
-              Import your AniList <ArrowRight aria-hidden="true" />
-            </button>
-          </div>
-        )}
-
         {loading ? (
-          <div className="dashboard-skeleton"><div className="skeleton-hero" /></div>
-        ) : activeStory && activePos ? (
+          /* neutral loading — nothing that resembles library content */
+          <div className="atlas-loading" role="status" aria-live="polite">
+            <span className="atlas-loading__route" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <p>Opening your atlas…</p>
+          </div>
+        ) : !isImported ? (
+          /* genuinely empty — the first page */
+          <FirstRun onImportClick={() => setIsImportOpen(true)} />
+        ) : reelStories.length > 0 ? (
           <>
-            {/* ═══ THE WORLD — the current story, full-bleed ═══════════ */}
-            <DashboardCover
-              story={activeStory}
-              pos={activePos}
-              storyNumber={activeStoryNumber}
-              total={filtered.length}
-              originYear={originYear}
-              epNow={epNow}
-            />
+            {/* ═══ THE WORLD — the featured stories, rotating ══════════ */}
+            <StoryReel stories={reelStories} />
 
             {/* ═══ THE INDEX — the whole library as a table of contents ══ */}
             <section className="index" id="stories" aria-labelledby="index-title">
@@ -418,6 +229,7 @@ export default function Dashboard() {
             </section>
           </>
         ) : (
+          /* imported, but nothing matches the current view */
           <section className="void">
             <div className="void__rose" aria-hidden="true">
               <div className="tp__ring" />
