@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { seasonTotal, type Franchise } from './franchise'
+import { applyMediaScope, seasonTotal, type Franchise, type MediaScope } from './franchise'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,6 +69,13 @@ function normalizeSearch(s: string): string {
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
+
+/** Map the active chip to the media scope for the derived view. */
+function mediaScopeForFilter(filter: FilterChip): MediaScope {
+  if (filter === 'anime') return 'ANIME'
+  if (filter === 'manga') return 'MANGA'
+  return 'ALL'
+}
 
 function matchesFilter(franchise: Franchise, filter: FilterChip): boolean {
   const { seasons, completedSeasons, totalSeasons } = franchise
@@ -154,6 +161,15 @@ export interface DashboardControls {
   setSort: (s: SortOption) => void
   activeFilter: FilterChip
   setActiveFilter: (f: FilterChip) => void
+  /**
+   * The media-scoped view of the library (ALL / only-ANIME / only-MANGA
+   * seasons, derived — the stored library is never split). Search, sort,
+   * progress, completion and every other presentation concern operates on
+   * this subset, so an anime season can never appear inside the Manga view
+   * (and vice versa).
+   */
+  scoped: Franchise[]
+  /** scoped + search chip + sort — the rows the index renders. */
   filtered: Franchise[]
 }
 
@@ -162,15 +178,22 @@ export function useDashboardControls(franchises: Franchise[]): DashboardControls
   const [sort, setSort] = useState<SortOption>('most-seasons')
   const [activeFilter, setActiveFilter] = useState<FilterChip>('all')
 
+  // 0. Media scope — derived presentation subset (never mutates the input).
+  const scoped = useMemo(
+    () => applyMediaScope(franchises, mediaScopeForFilter(activeFilter)),
+    [franchises, activeFilter],
+  )
+
   const filtered = useMemo(() => {
     const normalizedQuery = normalizeSearch(query)
 
-    let result = franchises.filter((franchise) => {
-      // 1. Filter chip
+    let result = scoped.filter((franchise) => {
+      // 1. Filter chip (anime/manga are already guaranteed by the scope;
+      //    the other chips now evaluate the scoped seasons only)
       if (!matchesFilter(franchise, activeFilter)) return false
 
-      // 2. Search: match franchise name OR any season title, case- and
-      //    punctuation-insensitive (normalizeSearch strips all punctuation)
+      // 2. Search: match franchise name OR any VISIBLE (scoped) season
+      //    title, case- and punctuation-insensitive
       if (normalizedQuery) {
         const nameMatch = normalizeSearch(franchise.name).includes(normalizedQuery)
         const seasonMatch = franchise.seasons.some((s) =>
@@ -182,11 +205,11 @@ export function useDashboardControls(franchises: Franchise[]): DashboardControls
       return true
     })
 
-    // 3. Sort after filtering
+    // 3. Sort after filtering (over the scoped totals)
     result = sortFranchises(result, sort)
 
     return result
-  }, [franchises, query, sort, activeFilter])
+  }, [scoped, query, sort, activeFilter])
 
-  return { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered }
+  return { query, setQuery, sort, setSort, activeFilter, setActiveFilter, scoped, filtered }
 }

@@ -47,21 +47,23 @@ function stateWord(franchise: Franchise) {
 export default function Dashboard() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const { franchises, isImported, loading, username } = useLibrary()
-  const { query, setQuery, sort, setSort, activeFilter, setActiveFilter, filtered } =
+  const { query, setQuery, sort, setSort, activeFilter, setActiveFilter, scoped, filtered } =
     useDashboardControls(franchises)
+
+  /* Every derived view — reel, index, stats — reads the media-scoped subset
+     (ALL / ANIME-only / MANGA-only seasons). The stored library itself is
+     never split; the scope is a presentation view. */
+  const viewSource = filtered.length > 0 ? filtered : scoped
 
   /* The reel follows the current index view (sorted/filtered) so the hero and
      the table of contents always agree. When the view is empty (a search that
-     matches nothing), the hero falls back to the whole library — it never
-     disappears, and the index shows its own "no matches" state below. */
-  const reelStories = useMemo(
-    () => buildReelStories(filtered.length > 0 ? filtered : franchises),
-    [filtered, franchises],
-  )
+     matches nothing), the hero falls back to the whole scoped library — it
+     never disappears, and the index shows its own "no matches" state below. */
+  const reelStories = useMemo(() => buildReelStories(viewSource), [viewSource])
 
   const stats = useMemo(() => {
-    const totalEntries = franchises.reduce((count, franchise) => count + franchise.seasons.length, 0)
-    const completedEntries = franchises.reduce(
+    const totalEntries = viewSource.reduce((count, franchise) => count + franchise.seasons.length, 0)
+    const completedEntries = viewSource.reduce(
       (count, franchise) => count + franchise.seasons.filter((season) => season.completed).length,
       0,
     )
@@ -70,7 +72,7 @@ export default function Dashboard() {
       completedEntries,
       completion: totalEntries ? Math.round((completedEntries / totalEntries) * 100) : 0,
     }
-  }, [franchises])
+  }, [viewSource])
 
   return (
     <div className="app-shell">

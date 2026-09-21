@@ -63,11 +63,25 @@ export function saveLibrary(username: string, franchises: Franchise[]): StoredLi
   return data
 }
 
+/**
+ * Shape check for anything parsed out of storage. A library that fails this
+ * check is treated as absent (honest first-run) rather than half-trusted —
+ * this keeps a hand-edited or corrupted value from crashing hydration.
+ */
+export function isValidLibrary(data: unknown): data is StoredLibrary {
+  if (!data || typeof data !== 'object') return false
+  const lib = data as Partial<StoredLibrary>
+  return typeof lib.username === 'string' && Array.isArray(lib.franchises)
+}
+
 export function loadLibrary(): StoredLibrary | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as StoredLibrary
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return isValidLibrary(parsed) ? parsed : null
+    }
   } catch {
     return null
   }

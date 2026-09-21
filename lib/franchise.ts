@@ -470,6 +470,52 @@ export function groupFranchises(rawEntries: AniListListEntry[]): Franchise[] {
   return franchises
 }
 
+// ---------------------------------------------------------------------------
+// Media-scope presentation views (ALL / ANIME / MANGA)
+// ---------------------------------------------------------------------------
+// The dashboard's Anime/Manga filter is a PRESENTATION concern, not a data
+// one. The stored library keeps every franchise complete (anime + manga
+// seasons together); this derives a display subset for the active scope and
+// recomputes the fields the UI reads from it. It never mutates the input.
+
+/** Which medium the current dashboard view shows. */
+export type MediaScope = 'ALL' | 'ANIME' | 'MANGA'
+
+/**
+ * Derived view of the library for a media scope:
+ *  - ALL   → every season of every franchise (the stored library, as-is)
+ *  - ANIME → only seasons where mediaType === 'ANIME'
+ *  - MANGA → only seasons where mediaType === 'MANGA'
+ *
+ * Franchises with no season in the scoped medium are excluded entirely.
+ * `totalSeasons`, `completedSeasons` and `nextToWatch` are recomputed from
+ * the subset so every derived UI (index glyph, reel route, resume CTA,
+ * sorting, progress and completion math) operates on the scoped seasons —
+ * never on a hidden season of the other medium.
+ *
+ * The original franchises are never split, mutated or re-stored; the
+ * franchise detail page still renders the complete story from the stored
+ * library.
+ */
+export function applyMediaScope(franchises: Franchise[], scope: MediaScope): Franchise[] {
+  if (scope === 'ALL') return franchises
+  const type = scope // 'ANIME' | 'MANGA'
+  const result: Franchise[] = []
+  for (const franchise of franchises) {
+    const seasons = franchise.seasons.filter((s) => s.mediaType === type)
+    if (seasons.length === 0) continue
+    const completedSeasons = seasons.filter((s) => s.completed).length
+    result.push({
+      ...franchise,
+      seasons,
+      totalSeasons: seasons.length,
+      completedSeasons,
+      nextToWatch: seasons.find((s) => !s.completed && s.status !== 'DROPPED') || null,
+    })
+  }
+  return result
+}
+
 /**
  * Short editorial line for hero compositions. Derived strictly from the
  * franchise's own stored data (never invented): the first sentence of the
