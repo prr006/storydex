@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowDown, ArrowRight } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { WordReveal } from '@/components/Reveal'
 import { Beacon } from '@/components/Beacon'
+import { ImportDialog } from '@/components/ImportDialog'
 
 /* A hand-plotted sample route for the title sequence:
    six waypoints, the beacon at 63% — the story is mid-route. */
@@ -14,6 +15,7 @@ const SAMPLE_TICKS = [0, 17, 34, 50, 63, 88]
 
 export default function Home() {
   const sectionRef = useRef<HTMLElement>(null)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ['start start', 'end start'],
@@ -23,7 +25,7 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <Navbar />
+      <Navbar onImportClick={() => setIsImportOpen(true)} />
 
       <section ref={sectionRef} className="title-page" aria-labelledby="tp-title">
         <motion.div className="title-page__sky" style={{ y: skyY }} aria-hidden="true" />
@@ -115,8 +117,9 @@ export default function Home() {
             <span className="content-row__folio">01</span>
             <h3>Import</h3>
             <p>
-              Paste your AniList media JSON. StoryDex keeps progress, scores, and
-              formats — nothing leaves your browser.
+              Search AniList, select the stories you follow, and import them into
+              your atlas — progress, scores, and formats come along. Nothing leaves
+              your browser.
             </p>
           </motion.div>
 
@@ -151,6 +154,8 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      <ImportDialog isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
     </main>
   )
 }

@@ -174,6 +174,17 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     setUsername('')
   }
 
+  // The component stays mounted (it renders AnimatePresence), so reset the
+  // transient state on every open — each opening starts clean on the
+  // "Find a story" tab.
+  useEffect(() => {
+    if (isOpen) {
+      setMode('find')
+      resetAll()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   const handleClose = () => {
     if (busy) return
     setError(null)

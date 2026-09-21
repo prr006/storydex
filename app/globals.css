@@ -26,9 +26,13 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-dark: var(--brand-dark);
-  --font-display: var(--font-instrument-serif, 'Instrument Serif', Georgia, serif);
-  --font-body: var(--font-instrument-sans, 'Instrument Sans', system-ui, sans-serif);
-  --font-mono: var(--font-plex-mono, 'IBM Plex Mono', ui-monospace, monospace);
+  /* the three typefaces — explicit, deterministic, single source of truth */
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* tailwind utility mappings stay in lockstep with the tokens above */
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -300,10 +304,10 @@ img { user-select: none; }
 
 .brand__mark {
   color: inherit;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 25px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 
@@ -1268,10 +1272,10 @@ img { user-select: none; }
 
 .idx__folio {
   color: var(--ink-20);
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: 0;
   transition: color 0.3s ease;
 }
 
@@ -1283,11 +1287,11 @@ img { user-select: none; }
   overflow: hidden;
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: clamp(25px, 2.6vw, 34px);
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  line-height: 1.06;
+  font-family: var(--font-body);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
   transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1439,6 +1443,7 @@ img { user-select: none; }
 .gate__title {
   margin: 0;
   color: var(--paper);
+  /* serif: major destination display title (DEPARTURE zone) */
   font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(46px, 7vw, 96px);
@@ -1762,10 +1767,11 @@ img { user-select: none; }
 
 .chapter__folio {
   color: var(--ink-20);
-  font-family: var(--font-display);
-  font-size: 56px;
+  font-family: var(--font-body);
+  font-size: 52px;
   font-weight: 400;
   line-height: 1;
+  letter-spacing: 0;
   transition: color 0.5s ease;
 }
 
@@ -1949,10 +1955,10 @@ img { user-select: none; }
   overflow: hidden;
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 23px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2032,10 +2038,10 @@ img { user-select: none; }
 
 .distance__name {
   color: var(--ink-70);
-  font-family: var(--font-display);
-  font-size: 23px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-family: var(--font-body);
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .distance__fill {
@@ -2394,9 +2400,9 @@ img { user-select: none; }
 
 .content-row__folio {
   color: var(--ink-20);
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: 500;
   transition: color 0.3s ease;
 }
 
@@ -2576,11 +2582,11 @@ img { user-select: none; }
 .dlg h2 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 27px;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .dlg__sub {
@@ -2737,11 +2743,11 @@ img { user-select: none; }
 .dlg__result-title {
   overflow: hidden;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  line-height: 1.15;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
