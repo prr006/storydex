@@ -43,68 +43,68 @@
 
 :root {
   color-scheme: light;
-  --background: #f2f1eb;
-  --foreground: #14161b;
-  --card: #faf9f5;
-  --card-foreground: #14161b;
-  --popover: #faf9f5;
-  --popover-foreground: #14161b;
-  --primary: #14161b;
-  --primary-foreground: #f2f1eb;
-  --secondary: #565c66;
-  --secondary-foreground: #f2f1eb;
-  --muted: #e9e7df;
-  --muted-foreground: #6d737c;
+  --background: #eef1f4;
+  --foreground: #18202a;
+  --card: #fbfcfd;
+  --card-foreground: #18202a;
+  --popover: #fbfcfd;
+  --popover-foreground: #18202a;
+  --primary: #18202a;
+  --primary-foreground: #eef1f4;
+  --secondary: #596572;
+  --secondary-foreground: #eef1f4;
+  --muted: #e3e7eb;
+  --muted-foreground: #596572;
   --accent: #d5491f;
-  --accent-foreground: #faf9f5;
+  --accent-foreground: #fbfcfd;
   --destructive: #c2452f;
-  --border: rgba(20, 22, 27, 0.12);
-  --input: #eeede6;
+  --border: rgba(24, 32, 42, 0.14);
+  --input: #e9edf1;
   --ring: #d5491f;
   --brand: #d5491f;
   --brand-dark: #a83a17;
 
-  /* luminous archive scale */
-  --bone: #f2f1eb;
-  --bone-2: #e9e7df;
-  --bone-3: #dfdcd2;
-  --paper: #faf9f5;
-  --mat: #f6f4ee;
+  /* cool porcelain scale (moonlit paper — the artwork carries the warmth) */
+  --bone: #eef1f4;
+  --bone-2: #e3e7eb;
+  --bone-3: #d8dde3;
+  --paper: #fbfcfd;
+  --mat: #f4f6f8;
 
-  /* deep ink scale (cinematic stages) */
-  --ink: #14161b;
-  --ink-2: #101218;
-  --ink-3: #0c0d11;
-  --ink-70: rgba(20, 22, 27, 0.72);
-  --ink-55: rgba(20, 22, 27, 0.55);
-  --ink-35: rgba(20, 22, 27, 0.38);
-  --ink-20: rgba(20, 22, 27, 0.2);
-  --fog: #6d737c;
-  --line: rgba(20, 22, 27, 0.11);
-  --line-2: rgba(20, 22, 27, 0.22);
-  --green: #3f7d4e;
+  /* deep cool ink scale (cinematic stages) */
+  --ink: #18202a;
+  --ink-2: #12161d;
+  --ink-3: #0d1015;
+  --ink-70: rgba(24, 32, 42, 0.72);
+  --ink-55: rgba(24, 32, 42, 0.55);
+  --ink-35: rgba(24, 32, 42, 0.38);
+  --ink-20: rgba(24, 32, 42, 0.2);
+  --fog: #596572;
+  --line: rgba(24, 32, 42, 0.1);
+  --line-2: rgba(24, 32, 42, 0.2);
+  --green: #3a7a52;
   --blue: #38606f;
 
-  /* light on dark (paper) scale */
-  --paper-70: rgba(250, 249, 245, 0.72);
-  --paper-55: rgba(250, 249, 245, 0.55);
-  --paper-35: rgba(250, 249, 245, 0.35);
-  --paper-20: rgba(250, 249, 245, 0.2);
-  --paper-line: rgba(250, 249, 245, 0.14);
-  --paper-line-2: rgba(250, 249, 245, 0.3);
+  /* moonlit light on dark (paper) scale */
+  --paper-70: rgba(247, 249, 251, 0.72);
+  --paper-55: rgba(247, 249, 251, 0.55);
+  --paper-35: rgba(247, 249, 251, 0.35);
+  --paper-20: rgba(247, 249, 251, 0.2);
+  --paper-line: rgba(247, 249, 251, 0.14);
+  --paper-line-2: rgba(247, 249, 251, 0.3);
 
   /* story accent (re-set per story via storyAccentVars) */
   --story-h: 22;
-  --story-accent: hsl(22 74% 55%);
-  --story-accent-strong: hsl(22 80% 58%);
-  --story-accent-deep: hsl(22 68% 32%);
-  --story-accent-bright: hsl(22 85% 68%);
-  --story-accent-soft: hsl(22 75% 55% / 0.13);
-  --story-accent-line: hsl(22 70% 50% / 0.5);
-  --story-glow: hsl(22 95% 58% / 0.45);
+  --story-accent: hsl(22 78% 52%);
+  --story-accent-strong: hsl(22 85% 56%);
+  --story-accent-deep: hsl(22 72% 28%);
+  --story-accent-bright: hsl(22 90% 68%);
+  --story-accent-soft: hsl(22 80% 52% / 0.14);
+  --story-accent-line: hsl(22 75% 48% / 0.55);
+  --story-glow: hsl(22 96% 58% / 0.5);
   --story-accent-ink: hsl(22 40% 97%);
-  --story-sky: hsl(22 70% 60% / 0.18);
-  --story-haze: hsl(22 65% 58% / 0.09);
+  --story-sky: hsl(22 75% 58% / 0.2);
+  --story-haze: hsl(22 70% 56% / 0.1);
   --story-light: hsl(22 95% 72% / 0.55);
 }
 
@@ -141,7 +141,7 @@ button { cursor: pointer; background: none; border: 0; }
 
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: var(--bone); }
-::-webkit-scrollbar-thumb { background: #c2bfb4; border: 3px solid var(--bone); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: #b9c1c9; border: 3px solid var(--bone); border-radius: 8px; }
 
 img { user-select: none; }
 
@@ -280,7 +280,7 @@ img { user-select: none; }
 }
 
 .atlas-nav--solid {
-  background: rgba(242, 241, 235, 0.95);
+  background: rgba(238, 241, 244, 0.95);
   color: var(--ink);
   border-bottom-color: var(--line);
   box-shadow: 0 16px 40px -28px rgba(10, 11, 15, 0.4);
@@ -543,7 +543,7 @@ img { user-select: none; }
 }
 
 .route__tick:hover i { transform: scale(1.35); border-color: var(--paper); }
-.route__tick--past i { background: var(--paper); border-color: var(--paper); box-shadow: 0 0 0 3px rgba(250, 249, 245, 0.08); }
+.route__tick--past i { background: var(--paper); border-color: var(--paper); box-shadow: 0 0 0 3px rgba(247, 249, 251, 0.08); }
 .route__tick--future i { border-style: dashed; opacity: 0.55; }
 
 /* the beacon — a luminous core wrapped in story light */
@@ -698,7 +698,7 @@ img { user-select: none; }
   height: 11px;
   background: var(--ink);
   border-color: var(--ink);
-  box-shadow: 0 0 0 3px rgba(20, 22, 27, 0.07);
+  box-shadow: 0 0 0 3px rgba(24, 32, 42, 0.07);
 }
 
 .node--current i {
@@ -895,7 +895,7 @@ img { user-select: none; }
   z-index: 2;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, rgba(242, 241, 235, 0.3), rgba(242, 241, 235, 0.76));
+  background: linear-gradient(180deg, rgba(238, 241, 244, 0.3), rgba(238, 241, 244, 0.78));
   color: var(--ink-55);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -1387,7 +1387,7 @@ img { user-select: none; }
   background:
     linear-gradient(180deg, var(--ink-3) 0%, transparent 26%),
     /* the title's dedicated quiet field — a controlled darkening, not a box */
-    linear-gradient(0deg, var(--ink-3) 0%, rgba(12, 13, 17, 0.72) 46%, transparent 82%),
+    linear-gradient(0deg, var(--ink-3) 0%, rgba(13, 16, 21, 0.72) 46%, transparent 82%),
     linear-gradient(90deg, rgba(10, 11, 15, 0.45), transparent 54%);
 }
 
@@ -1929,7 +1929,7 @@ img { user-select: none; }
   transition: background 0.3s ease;
 }
 
-.ledger__row:hover { background: rgba(20, 22, 27, 0.03); }
+.ledger__row:hover { background: rgba(24, 32, 42, 0.03); }
 
 .ledger__idx {
   color: var(--brand);
@@ -2498,7 +2498,7 @@ img { user-select: none; }
 
 .skeleton-hero {
   min-height: 66vh;
-  background: linear-gradient(110deg, #e9e7df 15%, #f2f1eb 45%, #e9e7df 80%);
+  background: linear-gradient(110deg, #e3e7eb 15%, #eef1f4 45%, #e3e7eb 80%);
   background-size: 220% 100%;
   animation: shimmer 1.8s linear infinite;
 }

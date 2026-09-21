@@ -36,16 +36,16 @@ export function storyAccentVars(seed: string): CSSProperties {
   const h = storyHue(seed || 'storydex')
   return {
     '--story-h': h,
-    '--story-accent': `hsl(${h} 74% 55%)`,
-    '--story-accent-strong': `hsl(${h} 80% 58%)`,
-    '--story-accent-deep': `hsl(${h} 68% 32%)`,
-    '--story-accent-bright': `hsl(${h} 85% 68%)`,
-    '--story-accent-soft': `hsl(${h} 75% 55% / 0.13)`,
-    '--story-accent-line': `hsl(${h} 70% 50% / 0.5)`,
-    '--story-glow': `hsl(${h} 95% 58% / 0.45)`,
+    '--story-accent': `hsl(${h} 78% 52%)`,
+    '--story-accent-strong': `hsl(${h} 85% 56%)`,
+    '--story-accent-deep': `hsl(${h} 72% 28%)`,
+    '--story-accent-bright': `hsl(${h} 90% 68%)`,
+    '--story-accent-soft': `hsl(${h} 80% 52% / 0.14)`,
+    '--story-accent-line': `hsl(${h} 75% 48% / 0.55)`,
+    '--story-glow': `hsl(${h} 96% 58% / 0.5)`,
     '--story-accent-ink': `hsl(${h} 40% 97%)`,
-    '--story-sky': `hsl(${h} 70% 60% / 0.18)`,
-    '--story-haze': `hsl(${h} 65% 58% / 0.09)`,
+    '--story-sky': `hsl(${h} 75% 58% / 0.2)`,
+    '--story-haze': `hsl(${h} 70% 56% / 0.1)`,
     '--story-light': `hsl(${h} 95% 72% / 0.55)`,
   } as CSSProperties
 }
