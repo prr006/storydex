@@ -2929,6 +2929,26 @@ img { user-select: none; }
 
 .dlg__error svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; }
 
+/* Non-fatal import outcome: the user's list IS saved; franchise discovery
+   could not complete. Same anatomy as .dlg__error, warm rather than red —
+   a notice, never an alarm. */
+.dlg__warn-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(150, 106, 32, 0.35);
+  background: rgba(150, 106, 32, 0.07);
+  color: #7a5a1e;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.dlg__warn-note svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; }
+
+.dlg__warn-note .dlg__tab { margin-left: auto; flex: 0 0 auto; white-space: nowrap; }
+
 .dlg__actions { display: flex; gap: 12px; margin-top: 26px; }
 
 .dlg__cancel {

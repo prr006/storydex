@@ -202,8 +202,8 @@ query ($userName: String, $type: MediaType!, $chunk: Int, $perChunk: Int) {
 `
 
 const MEDIA_QUERY = `
-query ($ids: [Int], $type: MediaType!) {
-  Page {
+query ($ids: [Int], $type: MediaType!, $perPage: Int) {
+  Page(perPage: $perPage) {
     media(id_in: $ids, type: $type) {
       ${MEDIA_FIELDS}
     }
@@ -240,10 +240,59 @@ query ($search: String, $type: MediaType!) {
 
 export class AniListError extends Error {
   status?: number
-  constructor(message: string, status?: number) {
+  /** Server-provided backoff (from the `Retry-After` header, in ms) on 429s. */
+  retryAfterMs?: number
+  constructor(message: string, status?: number, retryAfterMs?: number) {
     super(message)
     this.name = 'AniListError'
     this.status = status
+    this.retryAfterMs = retryAfterMs
+  }
+}
+
+/** Parses `Retry-After` (delta-seconds form; AniList sends integer seconds). */
+function parseRetryAfter(response: Response): number | undefined {
+  const header = response.headers?.get?.('Retry-After') ?? response.headers?.get?.('retry-after')
+  if (!header) return undefined
+  const seconds = Number(header)
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000)
+  const date = Date.parse(header)
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now())
+  return undefined
+}
+
+const RATE_LIMIT_WAIT_FLOOR_MS = 1000
+const RATE_LIMIT_WAIT_CEILING_MS = 65000
+const NETWORK_RETRY_WAIT_MS = 1200
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Rate-limit-aware request wrapper. On a 429 it waits the server's
+ * `Retry-After` (bounded), on an unreachable network a short fixed backoff,
+ * then retries ONCE — never hammering the API with immediate retries. Any
+ * second failure propagates with its precise taxonomy message.
+ */
+async function graphqlResilient<T>(query: string, variables: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+  let attempt = 0
+  for (;;) {
+    try {
+      return await graphqlRequest<T>(query, variables, signal)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') throw err
+      const isRateLimited = err instanceof AniListError && err.status === 429
+      const isNetwork = err instanceof AniListError && err.status === undefined
+      if (attempt >= 1 || (!isRateLimited && !isNetwork)) throw err
+      if (signal?.aborted) throw err
+      attempt += 1
+      const waitMs = isRateLimited
+        ? Math.min(Math.max(err.retryAfterMs ?? RATE_LIMIT_WAIT_FLOOR_MS, RATE_LIMIT_WAIT_FLOOR_MS), RATE_LIMIT_WAIT_CEILING_MS)
+        : NETWORK_RETRY_WAIT_MS
+      await sleep(waitMs)
+      if (signal?.aborted) throw err
+    }
   }
 }
 
@@ -277,7 +326,11 @@ async function graphqlRequest<T>(query: string, variables: Record<string, unknow
       throw new AniListError(`AniList user not found. Double-check the username and try again.`, 404)
     }
     if (response.status === 429) {
-      throw new AniListError('AniList is rate-limiting requests right now. Please wait a moment and try again.', 429)
+      throw new AniListError(
+        'AniList is rate-limiting requests right now. Please wait a moment and try again.',
+        429,
+        parseRetryAfter(response),
+      )
     }
     if (/private|not public|unauthorized|forbidden/i.test(message)) {
       throw new AniListError(
@@ -314,6 +367,42 @@ type RawListEntry = Omit<AniListListEntry, 'progress' | 'progressVolumes'> & {
   progressVolumes: number | null
 }
 
+/**
+ * User-list status priority. AniList can return the SAME media.id multiple
+ * times — across custom-list groupings, or the same entry listed under two
+ * statuses. When duplicates exist, the best user-list state wins:
+ *   COMPLETED > REPEATING > CURRENT > PAUSED > DROPPED > PLANNING
+ */
+const LIST_STATUS_PRIORITY: Record<string, number> = {
+  COMPLETED: 6,
+  REPEATING: 5,
+  CURRENT: 4,
+  PAUSED: 3,
+  DROPPED: 2,
+  PLANNING: 1,
+}
+
+/**
+ * Deduplicates list entries BY media.id, preserving the best user-list
+ * state per the priority above (ties keep the first occurrence). Runs at
+ * FETCH time — every downstream consumer (progress reports, expansion,
+ * grouping) sees unique media, never raw `lists[].entries` counts.
+ */
+export function dedupeListEntries(entries: AniListListEntry[]): AniListListEntry[] {
+  const byMediaId = new Map<number, AniListListEntry>()
+  for (const entry of entries) {
+    const existing = byMediaId.get(entry.media.id)
+    if (!existing) {
+      byMediaId.set(entry.media.id, entry)
+      continue
+    }
+    const existingPriority = existing.status ? (LIST_STATUS_PRIORITY[existing.status] ?? 0) : 0
+    const newPriority = entry.status ? (LIST_STATUS_PRIORITY[entry.status] ?? 0) : 0
+    if (newPriority > existingPriority) byMediaId.set(entry.media.id, entry)
+  }
+  return Array.from(byMediaId.values())
+}
+
 async function fetchListForType(
   username: string,
   type: MediaType,
@@ -322,7 +411,7 @@ async function fetchListForType(
   let chunk = 1
 
   while (chunk <= MAX_CHUNKS) {
-    const data = await graphqlRequest<{
+    const data = await graphqlResilient<{
       MediaListCollection: { hasNextChunk: boolean; lists: { entries: RawListEntry[] }[] } | null
     }>(LIBRARY_QUERY, { userName: username, type, chunk, perChunk: FETCH_CHUNK_SIZE })
 
@@ -343,7 +432,11 @@ async function fetchListForType(
     chunk += 1
   }
 
-  return entries
+  // Dedupe BY media.id right here — the same media can legitimately appear
+  // in several custom lists / status groupings. Everything downstream
+  // (onProgress counts, expandFranchises, groupFranchises) consumes unique
+  // entries with the best user-list state.
+  return dedupeListEntries(entries)
 }
 
 /**
@@ -405,14 +498,21 @@ export const FETCH_MEDIA_BATCH_SIZE = 50
  * `type: ANIME` query silently returns nothing — callers must batch by type.
  */
 export async function fetchMediaByIds(ids: number[], type: MediaType): Promise<AniListMedia[]> {
+  // Deduplicate BEFORE every batch — a media id is fetched exactly once,
+  // and AniList's single id space means a repeated id would only waste
+  // rate-limit budget.
   const uniqueIds = Array.from(new Set(ids))
   const results: AniListMedia[] = []
 
   for (let i = 0; i < uniqueIds.length; i += FETCH_MEDIA_BATCH_SIZE) {
     const batch = uniqueIds.slice(i, i + FETCH_MEDIA_BATCH_SIZE)
-    const data = await graphqlRequest<{ Page: { media: AniListMedia[] } | null }>(
+    // perPage is pinned to the full batch size (50): AniList's Page defaults
+    // to perPage: 50 anyway, but asking explicitly makes the returned data
+    // deterministic — one batch in, at most one page out, never a silently
+    // truncated page that would drop discovered media.
+    const data = await graphqlResilient<{ Page: { media: AniListMedia[] } | null }>(
       MEDIA_QUERY,
-      { ids: batch, type },
+      { ids: batch, type, perPage: FETCH_MEDIA_BATCH_SIZE },
     )
     if (data.Page?.media) {
       results.push(...data.Page.media)

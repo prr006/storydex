@@ -800,18 +800,24 @@ export function canonicalizeFranchises(franchises: Franchise[]): Franchise[] {
 export type MediaScope = 'ALL' | 'ANIME' | 'MANGA'
 
 /**
- * Derived view of the library for a media scope. Filters the COMPLETE
- * franchise graph (user-listed AND franchise-discovered entries — a
- * discovered manga still belongs to the story's manga route):
- *  - ALL   → every season of every franchise (the stored library, as-is)
- *  - ANIME → only seasons where mediaType === 'ANIME'
- *  - MANGA → only seasons where mediaType === 'MANGA'
+ * Derived view of the library for a media scope.
  *
- * Franchises with no season in the scoped medium (in the whole graph) are
- * excluded entirely. `totalSeasons`, `completedSeasons` and `nextToWatch`
- * are recomputed over the scoped subset — and ONLY over inUserList seasons,
- * so progress/watched state still comes exclusively from the user's own
- * entries, even when the visible seasons include discovered ones.
+ * MEMBERSHIP is user-owned: a franchise appears in the ANIME/MANGA view
+ * ONLY if the user has at least one inUserList=true season of that media
+ * type. An anime-only user franchise that merely DISCOVERED a related manga
+ * through relation expansion does NOT enter the Manga view — discovery
+ * completes the route, it never expands what the user's library "is".
+ *
+ * Once included, the view shows the COMPLETE medium subset of that
+ * franchise — user-listed AND discovered seasons of the scoped type (a
+ * discovered season still belongs on the story's route):
+ *  - ALL   → every season of every franchise (the stored library, as-is)
+ *  - ANIME → all ANIME seasons of franchises the user owns anime in
+ *  - MANGA → all MANGA seasons of franchises the user owns manga in
+ *
+ * `totalSeasons`, `completedSeasons` and `nextToWatch` are recomputed over
+ * the scoped subset — and ONLY over inUserList seasons, so progress/watched
+ * state comes exclusively from the user's own entries.
  *
  * The original franchises are never split, mutated or re-stored; the
  * franchise detail page still renders the complete story from the stored
@@ -822,8 +828,11 @@ export function applyMediaScope(franchises: Franchise[], scope: MediaScope): Fra
   const type = scope // 'ANIME' | 'MANGA'
   const result: Franchise[] = []
   for (const franchise of franchises) {
+    // Membership gate: at least one USER-OWNED season of the scoped type.
+    const userSeasonsOfType = franchise.seasons.filter((s) => s.inUserList && s.mediaType === type)
+    if (userSeasonsOfType.length === 0) continue
+    // Visible subset: the complete graph for this medium (user + discovered).
     const seasons = franchise.seasons.filter((s) => s.mediaType === type)
-    if (seasons.length === 0) continue
     const userSeasons = seasons.filter((s) => s.inUserList)
     const completedSeasons = userSeasons.filter((s) => s.completed).length
     result.push({

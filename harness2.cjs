@@ -12,7 +12,7 @@
  *   D  franchise detail pages
  *   H  served production CSS audit
  *
- * Run:  cd <repo root> && NODE_PATH=$PWD/node_modules node harness2.cjs
+ * Run:  cd /home/user && NODE_PATH=/home/user/storydex/node_modules node harness2.cjs
  */
 'use strict'
 const path = require('path')
@@ -137,6 +137,22 @@ const MEDIA = {
   8002: media(8002, { type: 'ANIME', format: 'TV', english: 'Filter Test Season 2', year: 2021, episodes: 12, relations: [edge('PREQUEL', 8001, 'ANIME', 'TV', 'Filter Test Season 1')] }),
   8003: media(8003, { type: 'MANGA', format: 'MANGA', english: 'Filter Test Manga', year: 2020, chapters: 50, relations: [edge('ALTERNATIVE', 8001, 'ANIME', 'TV', 'Filter Test Season 1'), edge('SEQUEL', 8004, 'MANGA', 'MANGA', 'Filter Test Manga 2')] }),
   8004: media(8004, { type: 'MANGA', format: 'MANGA', english: 'Filter Test Manga 2', year: 2021, chapters: 45, relations: [edge('PREQUEL', 8003, 'MANGA', 'MANGA', 'Filter Test Manga')] }),
+  2101: media(2101, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 1', year: 2001, chapters: 51, relations: [edge('SEQUEL', 2102, 'MANGA', 'MANGA', 'Dup Saga Alpha 2')] }),
+  2102: media(2102, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 2', year: 2002, chapters: 52, relations: [edge('PREQUEL', 2101, 'MANGA', 'MANGA', 'Dup Saga Alpha 1'), edge('SEQUEL', 2103, 'MANGA', 'MANGA', 'Dup Saga Alpha 3')] }),
+  2103: media(2103, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 3', year: 2003, chapters: 53, relations: [edge('PREQUEL', 2102, 'MANGA', 'MANGA', 'Dup Saga Alpha 2'), edge('SEQUEL', 2104, 'MANGA', 'MANGA', 'Dup Saga Alpha 4')] }),
+  2104: media(2104, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 4', year: 2004, chapters: 54, relations: [edge('PREQUEL', 2103, 'MANGA', 'MANGA', 'Dup Saga Alpha 3'), edge('SEQUEL', 2105, 'MANGA', 'MANGA', 'Dup Saga Alpha 5')] }),
+  2105: media(2105, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 5', year: 2005, chapters: 55, relations: [edge('PREQUEL', 2104, 'MANGA', 'MANGA', 'Dup Saga Alpha 4'), edge('SEQUEL', 2106, 'MANGA', 'MANGA', 'Dup Saga Alpha 6')] }),
+  2106: media(2106, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Alpha 6', year: 2006, chapters: 56, relations: [edge('PREQUEL', 2105, 'MANGA', 'MANGA', 'Dup Saga Alpha 5')] }),
+  2107: media(2107, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Beta 1', year: 2007, chapters: 57, relations: [edge('SEQUEL', 2108, 'MANGA', 'MANGA', 'Dup Saga Beta 2')] }),
+  2108: media(2108, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Beta 2', year: 2008, chapters: 58, relations: [edge('PREQUEL', 2107, 'MANGA', 'MANGA', 'Dup Saga Beta 1'), edge('SEQUEL', 2109, 'MANGA', 'MANGA', 'Dup Saga Beta 3')] }),
+  2109: media(2109, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Beta 3', year: 2009, chapters: 59, relations: [edge('PREQUEL', 2108, 'MANGA', 'MANGA', 'Dup Saga Beta 2'), edge('SEQUEL', 2110, 'MANGA', 'MANGA', 'Dup Saga Beta 4')] }),
+  2110: media(2110, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Beta 4', year: 2010, chapters: 60, relations: [edge('PREQUEL', 2109, 'MANGA', 'MANGA', 'Dup Saga Beta 3'), edge('SEQUEL', 2111, 'MANGA', 'MANGA', 'Dup Saga Beta 5')] }),
+  2111: media(2111, { type: 'MANGA', format: 'MANGA', english: 'Dup Saga Beta 5', year: 2011, chapters: 61, relations: [edge('PREQUEL', 2110, 'MANGA', 'MANGA', 'Dup Saga Beta 4')] }),
+  8010: media(8010, { type: 'ANIME', format: 'TV', english: 'Scop Show', year: 2019, episodes: 24, relations: [edge('ALTERNATIVE', 8011, 'MANGA', 'MANGA', 'Scop Show Manga')] }),
+  8011: media(8011, { type: 'MANGA', format: 'MANGA', english: 'Scop Show Manga', year: 2018, chapters: 90, relations: [edge('ALTERNATIVE', 8010, 'ANIME', 'TV', 'Scop Show')] }),
+  8101: media(8101, { type: 'MANGA', format: 'MANGA', english: 'Chain Manga', year: 2010, chapters: 100, relations: [edge('SEQUEL', 8102, 'MANGA', 'MANGA', 'Chain Manga 2')] }),
+  8102: media(8102, { type: 'MANGA', format: 'MANGA', english: 'Chain Manga 2', year: 2012, chapters: 80, relations: [edge('PREQUEL', 8101, 'MANGA', 'MANGA', 'Chain Manga'), edge('SEQUEL', 8103, 'MANGA', 'MANGA', 'Chain Manga 3')] }),
+  8103: media(8103, { type: 'MANGA', format: 'MANGA', english: 'Chain Manga 3', year: 2014, chapters: 60, relations: [edge('PREQUEL', 8102, 'MANGA', 'MANGA', 'Chain Manga 2')] }),
   1003: media(1003, { type: 'ANIME', format: 'TV', english: "Frieren: Beyond Journey's End", year: 2023, episodes: 28, genres: ['Adventure', 'Fantasy'], description: 'An elf mage after the quest.' }),
   2001: media(2001, { type: 'MANGA', format: 'MANGA', english: 'Re:Zero (Manga)', year: 2016, chapters: 369, genres: ['Adventure'], relations: [edge('ALTERNATIVE', 1001, 'ANIME', 'TV', 'Re:Zero Starting Life in Another World')] }),
   2002: media(2002, { type: 'MANGA', format: 'MANGA', english: 'Kaiji', year: 2004, chapters: 120, genres: ['Drama'], description: 'A gambler without money.' }),
@@ -177,6 +193,10 @@ const PROFILES = {
   dbfan: { ANIME: [wireEntry(7001, 'COMPLETED', 95, 153, null), wireEntry(7101, 'CURRENT', 88, 12, null), wireEntry(7201, 'CURRENT', 92, 42, null)], MANGA: [] },
   singlefan: { ANIME: [wireEntry(7001, 'CURRENT', 0, 10, null)], MANGA: [] },
   reversefan: { ANIME: [wireEntry(7001, 'COMPLETED', 95, 153, null)], MANGA: [] },
+  dupfan: { ANIME: [wireEntry(1001, 'CURRENT', 85, 12, null)], MANGA_DUP: 3, MANGA: [wireEntry(2101, 'COMPLETED', 70, 11, 0), wireEntry(2102, 'COMPLETED', 70, 12, 0), wireEntry(2103, 'COMPLETED', 70, 13, 0), wireEntry(2104, 'COMPLETED', 70, 14, 0), wireEntry(2105, 'COMPLETED', 70, 15, 0), wireEntry(2106, 'COMPLETED', 70, 16, 0), wireEntry(2107, 'COMPLETED', 70, 17, 0), wireEntry(2108, 'COMPLETED', 70, 18, 0), wireEntry(2109, 'COMPLETED', 70, 19, 0), wireEntry(2110, 'COMPLETED', 70, 20, 0), wireEntry(2111, 'COMPLETED', 70, 21, 0)] },
+  scopfan: { ANIME: [wireEntry(8010, 'CURRENT', 80, 5, null)], MANGA: [] },
+  rlfan: { ANIME: [wireEntry(7001, 'CURRENT', 0, 10, null)], MANGA: [] },
+  mg3fan: { ANIME: [], MANGA: [wireEntry(8101, 'CURRENT', 75, 4, 0)] },
   zfan: { ANIME: [wireEntry(7002, 'CURRENT', 90, 100, null)], MANGA: [] },
   filterfan: { ANIME: [wireEntry(8001, 'CURRENT', 80, 5, null)], MANGA: [wireEntry(8003, 'CURRENT', 85, 10, 0)] },
   chunkfan: { ANIME: [], MANGA: Array.from({ length: 560 }, (_, i) => wireEntry(9000 + i + 1, 'COMPLETED', 60, 10, 0)) },
@@ -193,8 +213,13 @@ const mock = {
   forbidNetwork: false,
 }
 
-function duckResponse(status, json) {
-  return { ok: status >= 200 && status < 300, status, json: async () => json }
+function duckResponse(status, json, headers = {}) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => json,
+    headers: { get: (name) => headers[String(name).toLowerCase()] ?? headers[name] ?? null },
+  }
 }
 
 function guardLibraryQuery(q) {
@@ -206,6 +231,7 @@ function guardMediaQuery(q) {
   for (const field of ['episodes', 'chapters', 'volumes']) {
     if (!q.includes(field)) throw new SchemaGuardError(`SCHEMA GUARD: media query must request "${field}"`)
   }
+  if (!q.includes('perPage')) throw new SchemaGuardError('SCHEMA GUARD: media-by-id query must explicitly pin perPage (full batch)')
 }
 function guardSearchQuery(q) {
   for (const field of ['episodes', 'chapters', 'volumes']) {
@@ -230,14 +256,34 @@ async function mockFetch(url, opts) {
     if (profile[v.type] === 'PRIVATE') {
       return duckResponse(400, { errors: [{ message: `This user's ${v.type === 'ANIME' ? 'anime' : 'manga'} list is private or not public` }] })
     }
-    const all = profile[v.type]
+    let all = profile[v.type]
+    const lists = [{ name: 'Main', status: 'CURRENT', entries: all }]
+    if (profile.MANGA_DUP && v.type === 'MANGA') {
+      // AniList reality: the SAME media can appear in multiple custom-list
+      // groupings — and one grouping can list an entry under a lower-priority
+      // status while another has it COMPLETED.
+      const dupes = all.map((e) => ({ ...e, id: e.id + 900000, status: 'PLANNING', score: 0, progress: 0, progressVolumes: 0 }))
+      lists.push({ name: 'Favorites', status: 'PLANNING', entries: dupes })
+      lists.push({ name: 'Backup', status: 'PLANNING', entries: dupes.map((e) => ({ ...e, id: e.id + 1 })) })
+      all = [...all, ...dupes, ...lists[2].entries]
+    }
     const per = v.perChunk || 500
     const start = ((v.chunk || 1) - 1) * per
     const page = all.slice(start, start + per)
-    return duckResponse(200, { data: { MediaListCollection: { hasNextChunk: start + per < all.length, lists: [{ name: 'Main', status: 'CURRENT', entries: page }] } } })
+    return duckResponse(200, { data: { MediaListCollection: { hasNextChunk: start + per < all.length, lists: start === 0 ? lists : [{ name: 'Main', status: 'CURRENT', entries: page }] } } })
   }
   if (q.includes('id_in')) {
     guardMediaQuery(q)
+    mock.mediaCalls = (mock.mediaCalls || 0) + 1
+    if (v.perPage !== 50) throw new SchemaGuardError('media-by-id query must pin perPage to the full batch size (50), got ' + v.perPage)
+    mock.mediaBatches = mock.mediaBatches || []
+    mock.mediaBatches.push({ ids: [...(v.ids || [])], at: Date.now() })
+    if (mock.rateLimitMedia && mock.rateLimitMedia.remaining > 0 && (!mock.rateLimitMedia.ids || (v.ids || []).some((id) => mock.rateLimitMedia.ids.includes(id)))) {
+      mock.rateLimitMedia.remaining--
+      mock.rateLimitMedia.times = mock.rateLimitMedia.times || []
+      mock.rateLimitMedia.times.push(Date.now())
+      return duckResponse(429, { errors: [{ message: 'Rate limited' }] }, { 'retry-after': String(mock.rateLimitMedia.retryAfter ?? 1) })
+    }
     const found = (v.ids || []).filter((id) => MEDIA[id] && MEDIA[id].type === v.type)
     return duckResponse(200, { data: { Page: { media: found.map((id) => MEDIA[id]) } } })
   }
@@ -732,6 +778,105 @@ async function sectionX() {
 }
 
 /* ═════════════════════════════════════════════════════════════════════ */
+console.log('── R: import robustness + user-owned media scope ─────────')
+async function sectionR() {
+  /* TEST A — same media across multiple list groupings: unique counts */
+  const counts = []
+  const dup = await fetchAniListLibrary('dupfan', (type, count) => counts.push([type, count]))
+  const mangaProgress = counts.find((c) => c[0] === 'MANGA')
+  check('R-A TEST A: onProgress reports UNIQUE manga (11, not 33 raw rows)', mangaProgress && mangaProgress[1] === 11, JSON.stringify(counts))
+  check('R-A2 fetch returns 11 unique manga entries with the BEST state (COMPLETED, real progress — not the PLANNING duplicates)', dup.manga.length === 11 && dup.manga.every((e) => e.status === 'COMPLETED' && e.progress >= 11) && new Set(dup.manga.map((e) => e.media.id)).size === 11, JSON.stringify(dup.manga.map((e) => [e.media.id, e.status, e.progress])))
+
+  /* TEST B — the 11 manga collapse into their actual franchise count */
+  mock.mediaBatches = []
+  const dupDisc = await libLib.expandFranchises([...dup.anime, ...dup.manga])
+  const dupGroups = libLib.canonicalizeFranchises(libLib.groupFranchises([...dup.anime, ...dup.manga], dupDisc))
+  const mangaRoutes = dupGroups.filter((g) => g.seasons.some((s) => s.mediaType === 'MANGA' && s.name.startsWith('Dup Saga')))
+  check('R-B TEST B: 11 manga → 2 chain franchises (not 11 routes); total 3 with the anime story', dupGroups.length === 3 && mangaRoutes.length === 2 && mangaRoutes.map((g) => g.seasons.length).sort().join(',') === '5,6', JSON.stringify(dupGroups.map((g) => [g.name, g.seasons.length])))
+  check('R-B2 every manga season in the chains is user-owned (real list entries)', mangaRoutes.every((g) => g.seasons.every((s) => s.inUserList === true)))
+
+  /* discovery request hygiene: deduped batches, no id fetched twice */
+  const seenIds = new Set()
+  let refetched = false
+  for (const batch of mock.mediaBatches) for (const id of batch.ids) { if (seenIds.has(id)) refetched = true; seenIds.add(id) }
+  check('R-B3 discovery never fetches the same media id twice (visited-set + batch dedupe)', !refetched && mock.mediaBatches.every((b) => new Set(b.ids).size === b.ids.length && b.ids.length <= 50), JSON.stringify(mock.mediaBatches.map((b) => b.ids)))
+
+  /* TEST C — anime-only user franchise with a DISCOVERED manga */
+  const scop = await fetchAniListLibrary('scopfan')
+  const scopDisc = await libLib.expandFranchises([...scop.anime, ...scop.manga])
+  const scopGroups = libLib.groupFranchises([...scop.anime, ...scop.manga], scopDisc)
+  check('R-C setup: anime user entry + discovered manga in one franchise', scopGroups.length === 1 && scopGroups[0].seasons.length === 2 && scopGroups[0].seasons.find((s) => s.mediaType === 'MANGA').inUserList === false)
+  const scopAll = libLib.applyMediaScope(scopGroups, 'ALL')
+  const scopManga = libLib.applyMediaScope(scopGroups, 'MANGA')
+  const scopAnime = libLib.applyMediaScope(scopGroups, 'ANIME')
+  check('R-C TEST C: appears in ALL (complete graph, 2 seasons)', scopAll.length === 1 && scopAll[0].seasons.length === 2)
+  check('R-C2 TEST C: does NOT appear in MANGA (no user-owned manga) and never counts as a manga entry', scopManga.length === 0 && scopAll[0].totalSeasons === 1)
+  check('R-C3 appears in ANIME with the user count (1 season, 1 user)', scopAnime.length === 1 && scopAnime[0].seasons.length === 1 && scopAnime[0].totalSeasons === 1)
+
+  /* TEST D — user manga + 2 discovered manga: full medium subset shown */
+  const mg3 = await fetchAniListLibrary('mg3fan')
+  const mg3Disc = await libLib.expandFranchises([...mg3.anime, ...mg3.manga])
+  const mg3Groups = libLib.groupFranchises([...mg3.anime, ...mg3.manga], mg3Disc)
+  const mg3Manga = libLib.applyMediaScope(mg3Groups, 'MANGA')
+  const mg3Anime = libLib.applyMediaScope(mg3Groups, 'ANIME')
+  check('R-D TEST D: MANGA view shows the franchise with ALL 3 manga route entries (1 user + 2 discovered), user count 1', mg3Manga.length === 1 && mg3Manga[0].seasons.length === 3 && mg3Manga[0].seasons.filter((s) => s.inUserList).length === 1 && mg3Manga[0].totalSeasons === 1 && mg3Manga[0].nextToWatch?.aniListId === 8101, JSON.stringify(mg3Manga[0] && mg3Manga[0].seasons.map((s) => [s.aniListId, s.inUserList])))
+  check('R-D2 TEST D: excluded from ANIME (no user-owned anime); discovered entries never promoted', mg3Anime.length === 0 && mg3Manga[0].seasons.filter((s) => !s.inUserList).every((s) => s.status === 'NOT_IN_LIST' && s.progress === 0))
+
+  /* TEST E — rate-limited discovery: list survives, precise non-fatal warning */
+  w.localStorage.removeItem(storageKey)
+  await refreshPage(Dashboard)
+  mock.rateLimitMedia = { remaining: 2, retryAfter: 1, times: [], ids: [7002, 7003, 7004] }
+  mock.mediaCalls = 0
+  click($('button.cta', $('.first-run')))
+  await waitFor(() => $('.dlg'), 'dialog for rlfan')
+  click(buttonByText('.dlg__tab', 'Whole list'))
+  await sleep(20)
+  setInput($('#anilist-username'), 'rlfan')
+  click($('.dlg__submit'))
+  await waitFor(() => $('.dlg__warn-note') || $('.dlg__error'), 'rate-limited import outcome', 20000)
+  check('R-E TEST E: discovery 429 is a NON-FATAL warning — no generic connection error, dialog states the list imported', !!$('.dlg__warn-note') && !$('.dlg__error') && text($('.dlg__warn-note')).includes('rate-limited') && text($('.dlg__warn-note')).includes('imported successfully'), $('.dlg__error') ? text($('.dlg__error')) : ($('.dlg__warn-note') ? text($('.dlg__warn-note')) : 'nothing'))
+  const eSaved = JSON.parse(storedJSON())
+  check('R-E2 TEST E: the user list itself is saved intact (Dragon Ball, 7001 inUserList=true, CURRENT, EP 10)', eSaved.franchises.length === 1 && eSaved.franchises[0].seasons.length === 1 && eSaved.franchises[0].seasons[0].aniListId === 7001 && eSaved.franchises[0].seasons[0].inUserList === true && eSaved.franchises[0].seasons[0].status === 'CURRENT' && eSaved.franchises[0].seasons[0].progress === 10, JSON.stringify(eSaved.franchises.map((f) => f.seasons.map((s) => [s.aniListId, s.inUserList, s.status, s.progress]))))
+  check('R-E3 TEST E: Retry-After honored — exactly 2 media attempts, >= ~1s apart, never hammered', mock.mediaCalls === 2 && mock.rateLimitMedia.times.length === 2 && mock.rateLimitMedia.times[1] - mock.rateLimitMedia.times[0] >= 900, `calls=${mock.mediaCalls} gap=${mock.rateLimitMedia.times.length === 2 ? mock.rateLimitMedia.times[1] - mock.rateLimitMedia.times[0] : -1}`)
+  click(buttonByText('.dlg__warn-go', 'Go to dashboard'))
+  await waitFor(() => !$('.dlg') && $all('.idx').length > 0, 'dashboard after degraded import')
+  check('R-E4 TEST E: dashboard renders the imported (partial) graph — one route, no phantom discovered entries', $all('.idx').length === 1 && text($('.idx__name', $all('.idx')[0])) === 'Dragon Ball' && $all('.glyph__dot', $all('.idx')[0]).length === 1)
+  mock.rateLimitMedia = null
+
+  /* TEST F — normal discovery still yields the complete graph */
+  click($('.atlas-nav button.cta'))
+  await waitFor(() => $('.dlg'), 'dialog for singlefan (TEST F)')
+  click(buttonByText('.dlg__tab', 'Whole list'))
+  await sleep(20)
+  setInput($('#anilist-username'), 'singlefan')
+  click($('.dlg__submit'))
+  await waitFor(() => !$('.dlg') && $all('.idx').length > 0, 'singlefan whole-list import')
+  const fSaved2 = JSON.parse(storedJSON())
+  check('R-F TEST F: successful discovery still stores the COMPLETE graph (4 seasons, 1 user + 3 discovered) with no warning', $all('.idx').length === 1 && $all('.glyph__dot', $all('.idx')[0]).length === 4 && fSaved2.franchises[0].seasons.length === 4 && fSaved2.franchises[0].totalSeasons === 1)
+
+  /* find-a-story stage-B failure also keeps the explicit selection */
+  w.localStorage.removeItem(storageKey)
+  await refreshPage(Dashboard)
+  mock.rateLimitMedia = { remaining: 2, retryAfter: 1, times: [], ids: [7002, 7003, 7004] }
+  click($('button.cta', $('.first-run')))
+  await waitFor(() => $('.dlg'), 'dialog for find-a-story rate-limit')
+  setInput($('.dlg__input'), 'dragon ball')
+  click($('.dlg__search-btn'))
+  await waitFor(() => $all('.dlg__result').some((x) => !x.classList.contains('is-loading')), 'search results (rate-limit test)')
+  const rlRow = $all('.dlg__result').filter((x) => !x.classList.contains('is-loading')).find((x) => text($('.dlg__result-title', x)) === 'Dragon Ball')
+  click(rlRow)
+  await sleep(30)
+  click($('.dlg__submit'))
+  await waitFor(() => $('.dlg__warn-note') || $('.dlg__error'), 'rate-limited find-a-story outcome', 20000)
+  const pSavedRaw = storedJSON()
+  const pSaved = pSavedRaw ? JSON.parse(pSavedRaw) : null
+  check('R-E5 find-a-story: discovery 429 keeps the explicit selection (7001 user), warns non-fatally', !!$('.dlg__warn-note') && !$('.dlg__error') && !!pSaved && pSaved.franchises.length === 1 && pSaved.franchises[0].seasons.length === 1 && pSaved.franchises[0].seasons[0].inUserList === true, `warn=${!!$('.dlg__warn-note')} err=${$('.dlg__error') ? text($('.dlg__error')) : 'none'} saved=${pSavedRaw ? pSavedRaw.slice(0, 160) : 'null'}`)
+  mock.rateLimitMedia = null
+  click(buttonByText('.dlg__warn-go', 'Go to dashboard'))
+  await waitFor(() => !$('.dlg'), 'dashboard after degraded find-a-story')
+}
+
+/* ═════════════════════════════════════════════════════════════════════ */
 console.log('── P: persistence across refreshes (FIX 1) ───────────────')
 let afterImportJSON = null
 async function sectionP() {
@@ -992,6 +1137,7 @@ function sectionH() {
     await sectionM()
     await sectionA()
     await sectionX()
+    await sectionR()
     await sectionP()
     await sectionF()
     await sectionB()

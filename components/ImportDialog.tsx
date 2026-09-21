@@ -11,6 +11,8 @@ import {
   searchAniListAll,
   entriesFromMedia,
   AniListError,
+  type AniListListEntry,
+  type AniListMedia,
   type AniListSearchResult,
   type MediaType,
 } from '@/lib/anilist'
@@ -100,6 +102,12 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
   // shared
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * Non-fatal outcome notice: the import SUCCEEDED (the user's data is
+   * saved), but franchise discovery could not complete. Never rendered as
+   * an error — the profile import itself did not fail.
+   */
+  const [warning, setWarning] = useState<string | null>(null)
 
   const busy = isImporting
 
@@ -161,10 +169,32 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     })
   }
 
+  /**
+   * Stage B of an import: franchise-graph expansion. Discovery is an
+   * enhancement over the user's own data, never a precondition for keeping
+   * it — a 429/network failure HERE must not fail the import. Returns the
+   * discovered media (possibly empty) plus a precise non-fatal warning.
+   */
+  const expandWithFallback = async (entries: AniListListEntry[]) => {
+    try {
+      const discovered = await expandFranchises(entries)
+      return { discovered, warning: null as string | null }
+    } catch (err) {
+      const rateLimited = err instanceof AniListError && err.status === 429
+      return {
+        discovered: [] as AniListMedia[],
+        warning: rateLimited
+          ? 'Your list imported successfully, but AniList rate-limited franchise discovery — related entries may be missing. Import again in a minute to complete the graph.'
+          : 'Your list imported successfully, but franchise discovery could not reach AniList — related entries may be missing. Import again later to complete the graph.',
+      }
+    }
+  }
+
   const handleImportSelected = async () => {
     if (selected.size === 0 || busy) return
     setIsImporting(true)
     setError(null)
+    setWarning(null)
     try {
       // Each selection keeps its own media type — manga ids must never be
       // sent through a type: ANIME query.
@@ -178,7 +208,9 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       // franchise graph is completed with relation-discovered media, which
       // are marked inUserList=false — discovered, never watched.
       const entries = entriesFromMedia(media)
-      const discovered = await expandFranchises(entries)
+      // Stage B (expansion) is resilient: the explicit selections are saved
+      // even when relation discovery is rate-limited or unreachable.
+      const { discovered, warning } = await expandWithFallback(entries)
       const imported = groupFranchises(entries, discovered)
       const stored = loadLibrary()
       // Canonical merge: franchises sharing ANY AniList media id become one
@@ -186,6 +218,13 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       // never spawns a second franchise).
       const merged = canonicalizeFranchises(mergeFranchises(stored?.franchises ?? [], imported))
       saveLibrary(stored?.username ?? '', merged)
+      if (warning) {
+        // Non-fatal: the selection IS imported. Stay open, say exactly what
+        // happened, and let the user continue — never the generic
+        // "check your connection" failure.
+        setWarning(warning)
+        return
+      }
       resetAll()
       onClose()
       router.push('/dashboard')
@@ -212,6 +251,9 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       setImportStatus(`Anime: ${counts.ANIME ?? '…'} · Manga: ${counts.MANGA ?? '…'}`)
     report()
     try {
+      // STAGE A — the user's actual AniList list (deduplicated by media.id
+      // at fetch time; counts reported are UNIQUE media counts). A failure
+      // here is a genuine import failure and uses the precise taxonomy.
       const result = await fetchAniListLibrary(username.trim(), (type, count) => {
         counts[type] = count
         report()
@@ -221,7 +263,11 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       // franchise shows the full story route — with the user's state only
       // on the entries they actually own.
       const allEntries = [...result.anime, ...result.manga]
-      const discovered = await expandFranchises(allEntries)
+      // STAGE B — franchise discovery. Resilient: if AniList rate-limits or
+      // is unreachable HERE, the user's exact list is still saved (stage A
+      // succeeded) with a non-fatal warning — the profile import itself did
+      // not fail, so no generic "check your connection" error.
+      const { discovered, warning } = await expandWithFallback(allEntries)
       // Canonical form before saving: the stored library itself must contain
       // ONE franchise per story graph, never two objects sharing media ids.
       const franchises = canonicalizeFranchises(groupFranchises(allEntries, discovered))
@@ -229,6 +275,10 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
       // previously stored one, and the imported username becomes the
       // stored identity.
       saveLibrary(result.username, franchises)
+      if (warning) {
+        setWarning(`${warning}${result.warnings.length > 0 ? ` (${result.warnings[0]})` : ''}`)
+        return
+      }
       resetAll()
       onClose()
       router.push('/dashboard')
@@ -251,6 +301,14 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
     setSelected(new Set())
     setUsername('')
     setImportStatus(null)
+    setWarning(null)
+  }
+
+  /** After a successful-but-degraded import: continue to the dashboard. */
+  const continueToDashboard = () => {
+    resetAll()
+    onClose()
+    router.push('/dashboard')
   }
 
   // The component stays mounted (it renders AnimatePresence), so reset the
@@ -267,6 +325,7 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
   const handleClose = () => {
     if (busy) return
     setError(null)
+    setWarning(null)
     onClose()
   }
 
@@ -551,6 +610,21 @@ export function ImportDialog({ isOpen, onClose }: ImportDialogProps) {
               >
                 <AlertCircle aria-hidden="true" />
                 <span>{error}</span>
+              </motion.div>
+            )}
+
+            {warning && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="dlg__warn-note"
+                role="status"
+              >
+                <Check aria-hidden="true" />
+                <span>{warning}</span>
+                <button type="button" className="dlg__tab dlg__warn-go" onClick={continueToDashboard}>
+                  Go to dashboard
+                </button>
               </motion.div>
             )}
 
